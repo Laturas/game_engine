@@ -1,9 +1,13 @@
 #pragma once
+#ifndef COMMON
+    #include "common.c"
+#endif
 
-#include "common.c"
-#include "libs/include/raylib.h"
-#include "libs/include/raymath.h"
-#include "libs/include/rlgl.h"
+#ifndef RAYLIB_H
+    #include "libs/include/raylib.h"
+    #include "libs/include/raymath.h"
+    #include "libs/include/rlgl.h"
+#endif
 
 #ifndef AFTERHOURS
     #include "afterhours.h"
@@ -240,7 +244,6 @@ void main_game_loop(Camera* main_camera) {
     EndDrawing();
 }
 
-
 enum game_loop {
     GAMELOOP_GAME,
     GAMELOOP_EDITOR,
@@ -248,9 +251,12 @@ enum game_loop {
 
 enum game_loop loop_mode;
 
+global Arena dynamic_colliders;
+global Arena static_colliders;
+
 int afterhours_main(int argc, char* argv[]) {
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+    const int screenWidth = 1600;
+    const int screenHeight = 900;
 
     InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
     SetTargetFPS(30);
@@ -279,7 +285,7 @@ int afterhours_main(int argc, char* argv[]) {
                 main_camera.projection = CAMERA_PERSPECTIVE;
             } else {
                 loop_mode = GAMELOOP_GAME;
-                main_camera.projection = CAMERA_ORTHOGRAPHIC;
+                main_camera.projection = CAMERA_PERSPECTIVE;
                 main_camera.position = (Vector3){ 10.0f, 10.0f, 10.0f }; // Camera position
             }
         }
