@@ -212,8 +212,19 @@ void platform_dependent_mem_decommit(void* addr, u64 decommit_size);
 	}
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
+	#include <memoryapi.h>
+	void* platform_dependent_mem_reserve(u64 reservation_size) {
+		return VirtualAlloc(NULL, reservation_size, MEM_RESERVE, PAGE_READWRITE);
+	}
 
+	void* platform_dependent_mem_commit(void* commit_at, u64 commit_size) {
+		return VirtualAlloc(commit_at, commit_size, MEM_COMMIT, PAGE_READWRITE);
+	}
+
+	void platform_dependent_mem_decommit(void* addr, u64 decommit_size) {
+		VirtualFree(addr, 0, MEM_RELEASE);
+	}
 #endif
 
 void arena_init(Arena* arena, u64 reservation_size) {
