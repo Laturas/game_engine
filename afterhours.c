@@ -1,13 +1,4 @@
 #pragma once
-#ifndef COMMON
-    #include "common.c"
-#endif
-
-#ifndef RAYLIB_H
-    #include "libs/include/raylib.h"
-    #include "libs/include/raymath.h"
-    #include "libs/include/rlgl.h"
-#endif
 
 #ifndef AFTERHOURS
     #include "afterhours.h"
@@ -122,7 +113,7 @@ void editor_loop(Camera* main_camera) {
 
         BeginMode3D(*main_camera);
 
-            // DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
+            DrawCube((Vector3) {0,0,0}, 2.0f, 2.0f, 2.0f, DARKGREEN);
             DrawCubeWires(VECTOR3_ZERO, 2.0f, 2.0f, 2.0f, MAROON);
 
             DrawGrid(10, 1.0f);
