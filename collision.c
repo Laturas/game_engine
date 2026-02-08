@@ -55,9 +55,6 @@ typedef struct SpacialHash {
 /* Default width of cells in the spacial hash */
 #define DEFAULT_CELL_WIDTH 10.0f
 
-/* This will fail to compile if DEFAULT_CELL_WIDTH is <= 0*/
-int __static_assertion_default_cell_width_must_be_greater_than_0[1 / (int)(DEFAULT_CELL_WIDTH)];
-
 /**
 * Returns the bounding box for all active colliders.
 *
@@ -141,8 +138,6 @@ BoundingBox get_world_bounding_box(TriangleColliderArray static_colliders, Trian
 * Constructs the spacial hash for all colliders
 */
 void collider_loop(Arena* collider_data_arena, TriangleColliderArray static_colliders, TriangleColliderArray dynamic_colliders) {
-	arena_restore(collider_data_arena, 0);
-
 	SpacialHash* spacial_hash = arena_alloc(collider_data_arena, sizeof(*spacial_hash));
 	spacial_hash->cell_width = DEFAULT_CELL_WIDTH;
 	spacial_hash->world_bounding_box = get_world_bounding_box(static_colliders, dynamic_colliders);
@@ -150,6 +145,4 @@ void collider_loop(Arena* collider_data_arena, TriangleColliderArray static_coll
 	u32 x_axis_cell_count = (
 		spacial_hash->world_bounding_box.max.x - spacial_hash->world_bounding_box.min.x
 	) / DEFAULT_CELL_WIDTH;
-
-
 }

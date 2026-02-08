@@ -11,9 +11,7 @@
         #include "libs/include/rlgl.h"
     #endif
 
-    #ifndef AFTERHOURS_C
-        #include "collision.c"
-
-        #include "afterhours.c"
-    #endif
+    #include "ui.c"
+    #include "collision.c"
+    #include "afterhours.c"
 #endif

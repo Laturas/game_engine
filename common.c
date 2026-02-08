@@ -281,6 +281,8 @@ void arena_restore(Arena* arena, u64 position) {
 * Completely frees the arena, decommitting the pages and unreserving the address space.
 */
 void arena_free(Arena* arena) {
+	if (arena->bytes == NULL) return;
+	
 	platform_dependent_mem_decommit(arena->bytes, arena->total_reserved_bytes);
 }
 
