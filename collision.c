@@ -3,11 +3,13 @@
  * - There are not a huge number of colliders along a vertical column
  * - Colliders do not handle special interactions (hurtboxes, dialogue, etc)
  * - We don't need full rigidbody physics.
+ * 
  * General outline of the system:
  * - The spacial hash will be rebuilt every frame from scratch (for safety reasons)
  * - The world will be divided into a grid of vertical cells, then every collider will be added to each list corresponding to the vertical cells it overlaps
  * - The only collider primitive that exists is a triangle, and all other colliders are derived from combinations of these
  */
+
 #ifndef AFTERHOURS
 	#include "afterhours.h"
 #endif
@@ -21,8 +23,6 @@ typedef int LayerMask;
 
 typedef struct TriangleCollider {
 	LayerMask mask;
-	f32 bounding_sphere_radius;
-	Vector3 bounding_sphere_center;
 
 	Vector3 vert_1;
 	Vector3 vert_2;

@@ -1,61 +1,107 @@
 #ifndef AFTERHOURS
-    #include "afterhours.h"
+	#include "afterhours.h"
 #endif
 
-Rectangle draw_editor_object_list_button(char* text, i32 x_pos, i32 y_pos) {
-    DrawRectangle( x_pos, y_pos, 300, 20, Fade(SKYBLUE, 0.5f));
-    DrawRectangleLines( x_pos, y_pos, 300, 20, BLUE);
-    DrawText(text, x_pos + 5, y_pos + 5, 14, RAYWHITE);
+typedef enum UiElementMouseState {
+	UIMS_NONE,
+	UIMS_HOVERED,
+	UIMS_CLICKED,
+	UIMS_DOWN,
+} UiElementMouseState;
 
-    return (Rectangle) {
-        .height = 20,
-        .width = 300,
-        
-        .x = x_pos,
-        .y = y_pos
-    };
+bool is_mouse_hovered(Rectangle button_rect) {
+	Vector2 mouse_position = GetMousePosition();
+	return CheckCollisionPointRec(mouse_position, button_rect);
 }
 
-bool is_clicked(Rectangle button_rect) {
-
+UiElementMouseState ui_element_mouse_state(Rectangle element_rect) {
+	Vector2 mouse_position = GetMousePosition();
+	if (CheckCollisionPointRec(mouse_position, element_rect)) {
+		if (IsMouseButtonPressed(0)) {
+			return UIMS_CLICKED;
+		}
+		if (IsMouseButtonDown(0)) {
+			return UIMS_DOWN;
+		}
+		return UIMS_HOVERED;
+	} else {
+		return UIMS_NONE;
+	}
 }
 
 void draw_editor_object_list(i32 x_pos, i32 y_pos) {
-    DrawRectangle( x_pos, 10 + y_pos, 320, 93, Fade(SKYBLUE, 0.5f));
-    DrawRectangleLines( x_pos, 10 + y_pos, 320, 93, BLUE);
+	char* objects[3] = {"Box", "Not box", "Sphere"};
 
-    DrawText("Objects", x_pos + 10, 20 + y_pos, 18, RAYWHITE);
+	i32 obj_count = (sizeof(objects) / sizeof(*objects));
+	i32 button_width = 300;
+	i32 button_height = 20;
 
-    char* objects[2] = {"Box", "Not box"};
+	i32 menu_height = 50					  /* Pre-button padding   */
+		+ obj_count*((button_height - 1) + 5) /* Space for buttons	*/
+		+ 0;								  /* After-button padding */
 
-    for (int i = 0; i < (sizeof(objects) / sizeof(*objects)); i++) {
-        i32 button_y_pos = y_pos + 40 + i*25;
-        Rectangle button = draw_editor_object_list_button(objects[i], x_pos + 10, button_y_pos);
-    }
+	DrawRectangle(x_pos, 10 + y_pos, 320, menu_height, Fade(SKYBLUE, 0.5f));
+	DrawRectangleLines(x_pos, 10 + y_pos, 320, menu_height, BLUE);
 
-    // DrawRectangle( x_pos + 10, 40 + y_pos, 300, 20, Fade(SKYBLUE, 0.5f));
-    // DrawRectangleLines( x_pos + 10, 40 + y_pos, 300, 20, BLUE);
-    // DrawText("Box", x_pos + 15, 45 + y_pos, 14, RAYWHITE);
+	DrawText("Objects", x_pos + 10, 20 + y_pos, 18, RAYWHITE);
+
+
+	for (int i = 0; i < obj_count; i++) {
+		i32 button_y_pos = y_pos + 50
+			+ i*(button_height + 5); /* +5 for extra padding between buttons */
+		i32 button_x_pos = x_pos + 10;
+
+		Rectangle button = (Rectangle) {
+			.height = button_height,
+			.width = button_width,
+			
+			.x = button_x_pos,
+			.y = button_y_pos
+		};
+
+		switch (ui_element_mouse_state(button)) {
+			case UIMS_NONE: {
+				DrawRectangle(	 button_x_pos, button_y_pos, 300, 20, Fade(SKYBLUE, 0.5f));
+
+				DrawText(objects[i], button_x_pos + 5, button_y_pos + 5, 14, RAYWHITE);
+			} break;
+
+			case UIMS_HOVERED: {
+				DrawRectangle(     button_x_pos, button_y_pos, 300, 20, Fade(BLUE, 0.5f));
+				DrawRectangleLines(button_x_pos, button_y_pos, 300, 20, RAYWHITE);
+
+				DrawText(objects[i], button_x_pos + 5, button_y_pos + 5,  14, RAYWHITE);
+			} break;
+
+			case UIMS_DOWN: {
+				DrawRectangle(	   button_x_pos, button_y_pos, 300, 20, Fade(DARKBLUE, 0.5f));
+				DrawRectangleLines(button_x_pos, button_y_pos, 300, 20, RAYWHITE);
+
+				DrawText(objects[i], button_x_pos + 5, button_y_pos + 5,  14, RAYWHITE);
+			} break;
+
+			case UIMS_CLICKED: {
+				DrawRectangle(	   button_x_pos, button_y_pos, 300, 20, Fade(DARKBLUE, 0.5f));
+				DrawRectangleLines(button_x_pos, button_y_pos, 300, 20, RAYWHITE);
+
+				DrawText(objects[i], button_x_pos + 5, button_y_pos + 5,  14, RAYWHITE);
+				fprintf(stderr, "Rect clicked!\n");
+			} break;	
+
+			default: {
+				ASSERT(("Case not handled!", 0));
+			} break;
+		}
+	}
 }
 
-typedef enum UiDrawType {
-    DRAW_NULL = 0,
-    DRAW_FPS,
-    DRAW_BUTTON,
-    DRAW_RECT,
-} UiDrawType;
-
-typedef struct DrawCommand {
-
-} DrawCommand;
-
 void draw_editor_ui() {
-    Arena ui_draw_call_arena = {0};
+	Arena ui_draw_call_arena = {0};
 
-    i32 fps_y_pos = 15 + 10;
-    DrawFPS(15, fps_y_pos - 10);
+	i32 fps_y_pos = 15 + 15;
+	DrawFPS(15, fps_y_pos - 15);
 
-    draw_editor_object_list(10, fps_y_pos);
+	draw_editor_object_list(10, fps_y_pos);
 
-    arena_free(&ui_draw_call_arena);
+	arena_free(&ui_draw_call_arena);
 }
