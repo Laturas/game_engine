@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common.c"
+#include "libs/include/raylib.h"
 #ifndef AFTERHOURS
 	#include "afterhours.h"
 #endif
@@ -112,14 +114,29 @@ Transform default_transform() {
 	};
 }
 
-void editor_loop(Camera* main_camera) {
+void draw_model(ModelID model_id, const Model* const model_prefabs, Transform model_transform) {
+	if (model_id == MODEL_NONE) { return; }
+
+	DrawModelEx(model_prefabs[model_id], model_transform.translation, VECTOR3_UP, 0.0f, model_transform.scale, WHITE);
+}
+
+void editor_loop(Camera* main_camera, StaticObjectArray static_objects, const Model* const model_prefabs, TriangleColliderArray optional_render_colliders) {
 	update_editor_camera(main_camera);
 	BeginDrawing();
 		ClearBackground(BLACK);
 
 		BeginMode3D(*main_camera);
-			// DrawCube((Vector3) {0,0,0}, 2.0f, 2.0f, 2.0f, DARKGREEN);
-			// DrawCubeWires(VECTOR3_ZERO, 2.0f, 2.0f, 2.0f, MAROON);
+			// for (int i = 0; i < static_objects.len; i++) {
+			// 	StaticObject current_object = static_objects.objects[i];
+			// 	draw_model(current_object.id, model_prefabs, current_object.transform);
+			// }
+
+			for (int i = 0; i < optional_render_colliders.length; i++) {
+				TriangleCollider tri = optional_render_colliders.colliders[i];
+				DrawLine3D(tri.vert_1, tri.vert_2, LIME);
+				DrawLine3D(tri.vert_2, tri.vert_3, LIME);
+				DrawLine3D(tri.vert_3, tri.vert_1, LIME);
+			}
 
 			DrawGrid(10, 1.0f);
 		EndMode3D();
@@ -205,48 +222,102 @@ enum game_loop {
 
 enum game_loop loop_mode;
 
+void initialize_model(Model* model_prefab, ModelID model_to_load) {
+	switch (model_to_load) {
+		case MODEL_NONE: {
+			*model_prefab = (Model) {0};
+			return;
+		} break;
+
+		case MODEL_BOX: {
+			*model_prefab = LoadModel("assets/models/Cube.obj");
+		} break;
+
+		case MODEL_TORUS: {
+			*model_prefab = LoadModel("assets/models/torus.obj");
+		} break;
+
+		default: {
+			ASSERT("Support for this model type not handled"?0:0);
+		} break;
+	}
+}
+
+void initialize_models(Model* model_prefabs, int model_count) {
+	for (int i = 0; i < model_count; i++) {
+		initialize_model(&(model_prefabs[i]), (ModelID)i);
+	}
+}
+
+/**
+* Static objects will be initialized on scene load. This is a temporary function for test purposes.
+*/
+StaticObjectArray test_initialize_static_objects(Arena* static_object_data) {
+	int object_count = 3;
+	StaticObject* object_array = arena_alloc(static_object_data, sizeof(*object_array) * object_count);
+
+	object_array[0] = (StaticObject) {
+		.id = MODEL_BOX,
+		.layer = MASK_STATIC_GEOMETRY,
+		.transform = default_transform(),
+	};
+	object_array[0].transform.translation = (Vector3) {2.0f, 0.0f, 0.0f};
+
+	object_array[1] = (StaticObject) {
+		.id = MODEL_BOX,
+		.layer = MASK_STATIC_GEOMETRY,
+		.transform = default_transform(),
+	};
+	
+	object_array[1].transform.translation = (Vector3) {0.0f, 0.0f, -3.0f};
+	object_array[1].transform.scale = (Vector3) {1.0f, 2.0f, 1.0f};
+	
+	object_array[2] = (StaticObject) {
+		.id = MODEL_TORUS,
+		.layer = MASK_STATIC_GEOMETRY,
+		.transform = default_transform(),
+	};
+
+	object_array[2].transform.translation = (Vector3) {-3.0f,-3.0f,-3.0f,};
+
+	return (StaticObjectArray) {
+		.objects = object_array,
+		.len = object_count
+	};
+}
+
 int afterhours_main(int argc, char* argv[]) {
 	const int screenWidth = 1600;
 	const int screenHeight = 900;
 
 	InitWindow(screenWidth, screenHeight, "Afterengine");
-	SetTargetFPS(60);
+	SetTargetFPS(1000);
+	SetExitKey(0); /* Disables ESC = exit */
 
-	// Define the camera to look into our 3d world
+
 	Camera3D main_camera = { 0 };
-	main_camera.position = (Vector3){ 10.0f, 10.0f, 10.0f }; // Camera position
-	main_camera.target = VECTOR3_ZERO;	  // Camera looking at point
-	main_camera.up = VECTOR3_UP;		  // Camera up vector (rotation towards target)
+	main_camera.position = (Vector3){ 10.0f, 10.0f, 10.0f };
+	main_camera.target = VECTOR3_ZERO;
+	main_camera.up = VECTOR3_UP;
 	main_camera.fovy = 45.0f;
 	main_camera.projection = CAMERA_PERSPECTIVE;
 
-	Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
-	SetExitKey(0); // Disables ESC = exit
-	// DisableCursor();
-
 	loop_mode = GAMELOOP_EDITOR;
+
+	Arena model_data_arena = {0};
+	int model_count = MODEL_ID_COUNT;
+	Model* model_prefabs = arena_alloc(&model_data_arena, sizeof(*model_prefabs) * model_count);
+	initialize_models(model_prefabs, model_count);
+
 
 	Arena scratch_arena = {0};
 
-	// StaticObjectArray* so_array = arena_alloc(&scratch_arena, sizeof(*so_array));
-	// StaticObject* static_test_cube = arena_alloc(&scratch_arena, sizeof(*static_test_cube));
-
-	// static_test_cube->id = SOBJ_BOX;
-	// static_test_cube->layer = MASK_STATIC_GEOMETRY;
-	// static_test_cube->transform = default_transform();
-	// static_test_cube->transform.translation = (Vector3) {2.0f, 0.0f, 0.0f};
-
-	// StaticObjectArray so_array = {.objects = static_test_cube, .len = 1};
+	StaticObjectArray so_array = test_initialize_static_objects(&scratch_arena);
 
 	// Main game loop
 	Arena collider_data = {0};
 	while (!WindowShouldClose()) {
 		arena_restore(&collider_data, 0);
-		// collider_loop(&collider_data,
-		// 	(TriangleColliderArray){.colliders = NULL, .length = 0},
-		// 	(TriangleColliderArray){.colliders = NULL, .length = 0}
-		// );
-		// static_object_loop(so_array, &collider_data);
 
 		if (IsKeyPressed(KEY_ESCAPE)) EnableCursor();
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_P)) {
@@ -260,7 +331,13 @@ int afterhours_main(int argc, char* argv[]) {
 			}
 		}
 		if (loop_mode == GAMELOOP_EDITOR) {
-			editor_loop(&main_camera);
+			TriangleColliderArray colliders = static_object_loop(&collider_data, so_array, model_prefabs);
+			editor_loop(
+				&main_camera,
+				so_array,
+				model_prefabs,
+				colliders
+			);
 		} else {
 			main_game_loop(&main_camera);
 		}

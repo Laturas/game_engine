@@ -11,7 +11,9 @@
  */
 
 #ifndef AFTERHOURS
-	#include "afterhours.h"
+	#include "common.c" 
+	#include "libs/include/raylib.h"
+	#include "libs/include/rlgl.h"
 #endif
 
 typedef int LayerMask;
