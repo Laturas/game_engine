@@ -120,16 +120,24 @@ void draw_model(ModelID model_id, const Model* const model_prefabs, Transform mo
 	DrawModelEx(model_prefabs[model_id], model_transform.translation, VECTOR3_UP, 0.0f, model_transform.scale, WHITE);
 }
 
-void editor_loop(Camera* main_camera, StaticObjectArray static_objects, const Model* const model_prefabs, TriangleColliderArray optional_render_colliders) {
+#define ABSF(f) (((f) < 0.0f) ? (-(f)) : (f))
+
+void editor_loop(
+	Camera*               main_camera,
+	StaticObjectArray     static_objects,
+	const Model* const    model_prefabs,
+	TriangleColliderArray optional_render_colliders,
+	SpacialHash           optional_render_spacial_hash
+) {
 	update_editor_camera(main_camera);
 	BeginDrawing();
 		ClearBackground(BLACK);
 
 		BeginMode3D(*main_camera);
-			// for (int i = 0; i < static_objects.len; i++) {
-			// 	StaticObject current_object = static_objects.objects[i];
-			// 	draw_model(current_object.id, model_prefabs, current_object.transform);
-			// }
+			for (int i = 0; i < static_objects.len; i++) {
+				StaticObject current_object = static_objects.objects[i];
+				draw_model(current_object.id, model_prefabs, current_object.transform);
+			}
 
 			for (int i = 0; i < optional_render_colliders.length; i++) {
 				TriangleCollider tri = optional_render_colliders.colliders[i];
@@ -138,7 +146,44 @@ void editor_loop(Camera* main_camera, StaticObjectArray static_objects, const Mo
 				DrawLine3D(tri.vert_3, tri.vert_1, LIME);
 			}
 
-			DrawGrid(10, 1.0f);
+			if (optional_render_spacial_hash.cells != NULL) {
+				SpacialHash spacial_hash = optional_render_spacial_hash;
+
+				u32 x_axis_cell_count = (
+					spacial_hash.world_bounding_box.max.x - spacial_hash.world_bounding_box.min.x
+				) / spacial_hash.cell_width
+				+ 1;
+	
+				u32 y_axis_cell_count = (
+					spacial_hash.world_bounding_box.max.y - spacial_hash.world_bounding_box.min.y
+				) / spacial_hash.cell_width
+				+ 1;
+
+				for (int y = 0; y < y_axis_cell_count; y++) {
+					for (int x = 0; x < x_axis_cell_count; x++) {
+						if (spacial_hash.cells[(x_axis_cell_count * y) + x].list != NULL) {
+							Vector3 position = {
+								.x = x * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.x,
+								.y = 0,
+								.z = y * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.z
+							};
+		
+							DrawCubeWires(position, spacial_hash.cell_width, 100.0f, spacial_hash.cell_width, LIGHTGRAY);
+						}
+					}
+				}
+				
+				float world_bounding_box_width  = ABSF(spacial_hash.world_bounding_box.max.x) + ABSF(spacial_hash.world_bounding_box.min.x);
+				float world_bounding_box_height = ABSF(spacial_hash.world_bounding_box.max.y) + ABSF(spacial_hash.world_bounding_box.min.y);
+				float world_bounding_box_length = ABSF(spacial_hash.world_bounding_box.max.z) + ABSF(spacial_hash.world_bounding_box.min.z);
+
+				Vector3 bounding_box_position = {
+					.x = (spacial_hash.world_bounding_box.max.x + spacial_hash.world_bounding_box.min.x) / 2.0f,
+					.y = (spacial_hash.world_bounding_box.max.y + spacial_hash.world_bounding_box.min.y) / 2.0f,
+					.z = (spacial_hash.world_bounding_box.max.z + spacial_hash.world_bounding_box.min.z) / 2.0f,
+				};
+				DrawCubeWires(bounding_box_position, world_bounding_box_width, world_bounding_box_height, world_bounding_box_length, RED);
+			}
 		EndMode3D();
 
 		draw_editor_ui();
@@ -149,16 +194,22 @@ void editor_loop(Camera* main_camera, StaticObjectArray static_objects, const Mo
 void update_game_camera(Camera* camera) {
 	Vector2 mousePositionDelta = GetMouseDelta();
 
-	bool moveInWorldPlane = true;
+	UNUSED(
+		bool moveInWorldPlane = true;
+	);
+
 	bool rotateAroundTarget = true;
 	bool lockView = true;
 	bool rotateUp = false;
 
 	// Camera speeds based on frame time
-	float cameraMoveSpeed = CAMERA_MOVE_SPEED*GetFrameTime();
 	float cameraRotationSpeed = CAMERA_ROTATION_SPEED*GetFrameTime();
-	float cameraPanSpeed = CAMERA_PAN_SPEED*GetFrameTime();
-	float cameraOrbitalSpeed = CAMERA_ORBITAL_SPEED*GetFrameTime();
+
+	UNUSED (
+		float cameraMoveSpeed = CAMERA_MOVE_SPEED*GetFrameTime();
+		float cameraPanSpeed = CAMERA_PAN_SPEED*GetFrameTime();
+		float cameraOrbitalSpeed = CAMERA_ORBITAL_SPEED*GetFrameTime();
+	);
 
 	// Camera rotation
 	if (IsKeyDown(KEY_DOWN)) CameraPitch(camera, -cameraRotationSpeed, lockView, rotateAroundTarget, rotateUp);
@@ -278,7 +329,7 @@ StaticObjectArray test_initialize_static_objects(Arena* static_object_data) {
 		.transform = default_transform(),
 	};
 
-	object_array[2].transform.translation = (Vector3) {-3.0f,-3.0f,-3.0f,};
+	object_array[2].transform.translation = (Vector3) {-15.0f,-3.0f,-3.0f,};
 
 	return (StaticObjectArray) {
 		.objects = object_array,
@@ -286,38 +337,40 @@ StaticObjectArray test_initialize_static_objects(Arena* static_object_data) {
 	};
 }
 
+
 int afterhours_main(int argc, char* argv[]) {
 	const int screenWidth = 1600;
 	const int screenHeight = 900;
 
 	InitWindow(screenWidth, screenHeight, "Afterengine");
-	SetTargetFPS(1000);
+	SetTargetFPS(24);
 	SetExitKey(0); /* Disables ESC = exit */
 
 
-	Camera3D main_camera = { 0 };
-	main_camera.position = (Vector3){ 10.0f, 10.0f, 10.0f };
-	main_camera.target = VECTOR3_ZERO;
-	main_camera.up = VECTOR3_UP;
-	main_camera.fovy = 45.0f;
-	main_camera.projection = CAMERA_PERSPECTIVE;
+	Camera3D main_camera = { 
+		.position = (Vector3){ 10.0f, 10.0f, 10.0f },
+		.target = VECTOR3_ZERO,
+		.up = VECTOR3_UP,
+		.fovy = 45.0f,
+		.projection = CAMERA_PERSPECTIVE,
+	};
 
 	loop_mode = GAMELOOP_EDITOR;
 
-	Arena model_data_arena = {0};
-	int model_count = MODEL_ID_COUNT;
+	/* The arena brothers */
+	Arena scene_arena = {0};         /* Stores all data related to the current scene. Static objects, lighting data, etc. Mainly things that don't change. */
+	Arena collider_data_arena = {0}; /* Stores all collider data for the current frame. Gets reset every frame. */
+	Arena model_data_arena = {0};    /* Stores all loadable models preloaded for future use */
+	// Arena 
+
+	int model_count = (int)MODEL_ID_COUNT;
 	Model* model_prefabs = arena_alloc(&model_data_arena, sizeof(*model_prefabs) * model_count);
 	initialize_models(model_prefabs, model_count);
 
+	StaticObjectArray so_array = test_initialize_static_objects(&scene_arena);
 
-	Arena scratch_arena = {0};
-
-	StaticObjectArray so_array = test_initialize_static_objects(&scratch_arena);
-
-	// Main game loop
-	Arena collider_data = {0};
 	while (!WindowShouldClose()) {
-		arena_restore(&collider_data, 0);
+		arena_restore(&collider_data_arena, 0);
 
 		if (IsKeyPressed(KEY_ESCAPE)) EnableCursor();
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_P)) {
@@ -331,12 +384,15 @@ int afterhours_main(int argc, char* argv[]) {
 			}
 		}
 		if (loop_mode == GAMELOOP_EDITOR) {
-			TriangleColliderArray colliders = static_object_loop(&collider_data, so_array, model_prefabs);
+			TriangleColliderArray static_colliders = static_object_loop(&collider_data_arena, so_array, model_prefabs);
+			TriangleColliderArray dynamic_colliders = { .colliders = NULL, .length = 0 };
+			SpacialHash collider_spacial_hash = collider_spacial_hash_create(&collider_data_arena, static_colliders, dynamic_colliders);
 			editor_loop(
 				&main_camera,
 				so_array,
 				model_prefabs,
-				colliders
+				static_colliders,
+				collider_spacial_hash
 			);
 		} else {
 			main_game_loop(&main_camera);
