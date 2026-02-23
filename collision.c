@@ -12,6 +12,7 @@
 
 #ifndef AFTERHOURS
 	#include "common.c" 
+	#include "math.c"
 	#include "libs/include/raylib.h"
 	#include "libs/include/rlgl.h"
 #endif
@@ -138,33 +139,6 @@ BoundingBox get_world_bounding_box(TriangleColliderArray static_colliders, Trian
 	return world_bounding_box;
 }
 
-#define MIN3(a,b,c) (((a) < (b)) \
-	? ((a) < (c)) ? (a) : (c) \
-	: ((b) < (c)) ? (b) : (c))
-
-#define MAX3(a,b,c) (((a) > (b)) \
-	? ((a) > (c)) ? (a) : (c) \
-	: ((b) > (c)) ? (b) : (c))
-
-/**
-* A short, fast, branchless version of floor, rounding down to the nearest integer.
-*/
-f32 f32_floor(f32 value) {
-	/* Truncates it towards zero */
-	int i = (int)value;
-	/* Subtracts 1 if it was negative */
-	return (float)(i - (i > value));
-}
-
-/**
-* A short, fast, branchless version of ceiling, rounding up to the nearest integer.
-*/
-f32 f32_ceiling(f32 value) {
-	/* Truncates it towards zero */
-	int i = (int)value;
-	/* Adds 1 if it was positive */
-	return (float)(i + (i <= value));
-}
 
 
 void collider_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash* spacial_hash, TriangleColliderArray collider_array) {

@@ -125,7 +125,7 @@ void draw_model(ModelID model_id, const Model* const model_prefabs, Transform mo
 void editor_loop(
 	Camera*               main_camera,
 	StaticObjectArray     static_objects,
-	const Model* const    model_prefabs,
+	const Model*          model_prefabs,
 	TriangleColliderArray optional_render_colliders,
 	SpacialHash           optional_render_spacial_hash
 ) {
@@ -337,13 +337,12 @@ StaticObjectArray test_initialize_static_objects(Arena* static_object_data) {
 	};
 }
 
-
 int afterhours_main(int argc, char* argv[]) {
 	const int screenWidth = 1600;
 	const int screenHeight = 900;
 
 	InitWindow(screenWidth, screenHeight, "Afterengine");
-	SetTargetFPS(24);
+	SetTargetFPS(60);
 	SetExitKey(0); /* Disables ESC = exit */
 
 
