@@ -1,39 +1,36 @@
 #pragma once
 
-#include "common.c"
-#include "libs/include/raylib.h"
-#ifndef AFTERHOURS
-	#include "afterhours.h"
+#include "afterhours.h"
+
+#include "math.c"
+#include "collision.c"
+#include "entities.c"
+#include "ui.c"
+
+
+/* Leave this undefined. This is a region. */
+#ifndef REGION_RAYLIB_CAMERA_FUNCTIONALITY
+	/* Units per second */
+	#define CAMERA_MOVE_SPEED		5.4f
+	#define CAMERA_ROTATION_SPEED	1.0f
+	#define CAMERA_PAN_SPEED		1.0f
+
+	#define CAMERA_MOUSE_MOVE_SENSITIVITY	0.003f
+
+	/* Camera orbital speed in CAMERA_ORBITAL mode. Units in radians/second */
+	#define CAMERA_ORBITAL_SPEED	0.5f
+
+	void CameraMoveToTarget(Camera *camera, float delta);
+	void CameraMoveUp(Camera *camera, float distance);
+	void CameraMoveRight(Camera *camera, float distance, bool moveInWorldPlane);
+	Vector3 GetCameraForward(Camera *camera);
+	Vector3 GetCameraUp(Camera *camera);
+	Vector3 GetCameraRight(Camera *camera);
+	void CameraPitch(Camera *camera, float angle, bool lockView, bool rotateAroundTarget, bool rotateUp);
+	void CameraYaw(Camera *camera, float angle, bool rotateAroundTarget);
+	void CameraRoll(Camera *camera, float angle);
+	void CameraMoveForward(Camera *camera, float distance, bool moveInWorldPlane);
 #endif
-
-#define VECTOR3_ZERO (Vector3){ 0.0f, 0.0f, 0.0f }
-#define VECTOR3_UP (Vector3){ 0.0f, 1.0f, 0.0f }
-#define VECTOR3_DOWN (Vector3){ 0.0f, -1.0f, 0.0f }
-#define VECTOR3_FORWARD (Vector3){ 0.0f, 0.0f, 1.0f }
-#define VECTOR3_BACKWARD (Vector3){ 0.0f, 0.0f, -1.0f }
-#define VECTOR3_RIGHT (Vector3){ 1.0f, 0.0f, 0.0f }
-#define VECTOR3_LEFT (Vector3){ -1.0f, 0.0f, 0.0f }
-
-/* Units per second */
-#define CAMERA_MOVE_SPEED		5.4f
-#define CAMERA_ROTATION_SPEED	1.0f
-#define CAMERA_PAN_SPEED		1.0f
-
-#define CAMERA_MOUSE_MOVE_SENSITIVITY	0.003f
-
-/* Camera orbital speed in CAMERA_ORBITAL mode. Units in radians/second */
-#define CAMERA_ORBITAL_SPEED	0.5f
-
-void CameraMoveToTarget(Camera *camera, float delta);
-void CameraMoveUp(Camera *camera, float distance);
-void CameraMoveRight(Camera *camera, float distance, bool moveInWorldPlane);
-Vector3 GetCameraForward(Camera *camera);
-Vector3 GetCameraUp(Camera *camera);
-Vector3 GetCameraRight(Camera *camera);
-void CameraPitch(Camera *camera, float angle, bool lockView, bool rotateAroundTarget, bool rotateUp);
-void CameraYaw(Camera *camera, float angle, bool rotateAroundTarget);
-void CameraRoll(Camera *camera, float angle);
-void CameraMoveForward(Camera *camera, float distance, bool moveInWorldPlane);
 
 void update_editor_camera(Camera *camera) {
 	Vector2 mousePositionDelta = GetMouseDelta();
@@ -114,13 +111,11 @@ Transform default_transform() {
 	};
 }
 
-void draw_model(ModelID model_id, const Model* const model_prefabs, Transform model_transform) {
+void draw_model(ModelID model_id, const Model* model_prefabs, Transform model_transform) {
 	if (model_id == MODEL_NONE) { return; }
 
 	DrawModelEx(model_prefabs[model_id], model_transform.translation, VECTOR3_UP, 0.0f, model_transform.scale, WHITE);
 }
-
-#define ABSF(f) (((f) < 0.0f) ? (-(f)) : (f))
 
 void editor_loop(
 	Camera*               main_camera,
@@ -149,23 +144,13 @@ void editor_loop(
 			if (optional_render_spacial_hash.cells != NULL) {
 				SpacialHash spacial_hash = optional_render_spacial_hash;
 
-				u32 x_axis_cell_count = (
-					spacial_hash.world_bounding_box.max.x - spacial_hash.world_bounding_box.min.x
-				) / spacial_hash.cell_width
-				+ 1;
-	
-				u32 y_axis_cell_count = (
-					spacial_hash.world_bounding_box.max.y - spacial_hash.world_bounding_box.min.y
-				) / spacial_hash.cell_width
-				+ 1;
-
-				for (int y = 0; y < y_axis_cell_count; y++) {
-					for (int x = 0; x < x_axis_cell_count; x++) {
-						if (spacial_hash.cells[(x_axis_cell_count * y) + x].list != NULL) {
+				for (int z = 0; z < spacial_hash.z_axis_cell_count; z++) {
+					for (int x = 0; x < spacial_hash.z_axis_cell_count; x++) {
+						if (spacial_hash.cells[(spacial_hash.z_axis_cell_count * z) + x].list != NULL) {
 							Vector3 position = {
 								.x = x * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.x,
 								.y = 0,
-								.z = y * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.z
+								.z = z * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.z
 							};
 		
 							DrawCubeWires(position, spacial_hash.cell_width, 100.0f, spacial_hash.cell_width, LIGHTGRAY);
@@ -173,9 +158,9 @@ void editor_loop(
 					}
 				}
 				
-				float world_bounding_box_width  = ABSF(spacial_hash.world_bounding_box.max.x) + ABSF(spacial_hash.world_bounding_box.min.x);
-				float world_bounding_box_height = ABSF(spacial_hash.world_bounding_box.max.y) + ABSF(spacial_hash.world_bounding_box.min.y);
-				float world_bounding_box_length = ABSF(spacial_hash.world_bounding_box.max.z) + ABSF(spacial_hash.world_bounding_box.min.z);
+				float world_bounding_box_width  = math_f32_abs(spacial_hash.world_bounding_box.max.x) + math_f32_abs(spacial_hash.world_bounding_box.min.x);
+				float world_bounding_box_height = math_f32_abs(spacial_hash.world_bounding_box.max.y) + math_f32_abs(spacial_hash.world_bounding_box.min.y);
+				float world_bounding_box_length = math_f32_abs(spacial_hash.world_bounding_box.max.z) + math_f32_abs(spacial_hash.world_bounding_box.min.z);
 
 				Vector3 bounding_box_position = {
 					.x = (spacial_hash.world_bounding_box.max.x + spacial_hash.world_bounding_box.min.x) / 2.0f,
@@ -191,12 +176,13 @@ void editor_loop(
 	EndDrawing();
 }
 
+#ifndef REGION_DONT_CARE
 void update_game_camera(Camera* camera) {
 	Vector2 mousePositionDelta = GetMouseDelta();
 
-	UNUSED(
+	#ifdef UNUSED
 		bool moveInWorldPlane = true;
-	);
+	#endif
 
 	bool rotateAroundTarget = true;
 	bool lockView = true;
@@ -205,11 +191,11 @@ void update_game_camera(Camera* camera) {
 	// Camera speeds based on frame time
 	float cameraRotationSpeed = CAMERA_ROTATION_SPEED*GetFrameTime();
 
-	UNUSED (
+	#ifdef UNUSED
 		float cameraMoveSpeed = CAMERA_MOVE_SPEED*GetFrameTime();
 		float cameraPanSpeed = CAMERA_PAN_SPEED*GetFrameTime();
 		float cameraOrbitalSpeed = CAMERA_ORBITAL_SPEED*GetFrameTime();
-	);
+	#endif
 
 	// Camera rotation
 	if (IsKeyDown(KEY_DOWN)) CameraPitch(camera, -cameraRotationSpeed, lockView, rotateAroundTarget, rotateUp);
@@ -265,6 +251,7 @@ void main_game_loop(Camera* main_camera) {
 
 	EndDrawing();
 }
+#endif
 
 enum game_loop {
 	GAMELOOP_GAME,
@@ -360,7 +347,6 @@ int afterhours_main(int argc, char* argv[]) {
 	Arena scene_arena = {0};         /* Stores all data related to the current scene. Static objects, lighting data, etc. Mainly things that don't change. */
 	Arena collider_data_arena = {0}; /* Stores all collider data for the current frame. Gets reset every frame. */
 	Arena model_data_arena = {0};    /* Stores all loadable models preloaded for future use */
-	// Arena 
 
 	int model_count = (int)MODEL_ID_COUNT;
 	Model* model_prefabs = arena_alloc(&model_data_arena, sizeof(*model_prefabs) * model_count);
@@ -385,7 +371,7 @@ int afterhours_main(int argc, char* argv[]) {
 		if (loop_mode == GAMELOOP_EDITOR) {
 			TriangleColliderArray static_colliders = static_object_loop(&collider_data_arena, so_array, model_prefabs);
 			TriangleColliderArray dynamic_colliders = { .colliders = NULL, .length = 0 };
-			SpacialHash collider_spacial_hash = collider_spacial_hash_create(&collider_data_arena, static_colliders, dynamic_colliders);
+			SpacialHash collider_spacial_hash = collision_spacial_hash_create(&collider_data_arena, static_colliders);
 			editor_loop(
 				&main_camera,
 				so_array,

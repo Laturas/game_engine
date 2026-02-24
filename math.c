@@ -1,32 +1,14 @@
 #pragma once
 
-#ifndef AFTERHOURS
+#ifndef AFTERHOURS_H
 	#include "afterhours.h"
 #endif
-
-#define VECTOR3_ZERO (Vector3){ 0.0f, 0.0f, 0.0f }
-#define VECTOR3_UP (Vector3){ 0.0f, 1.0f, 0.0f }
-#define VECTOR3_DOWN (Vector3){ 0.0f, -1.0f, 0.0f }
-#define VECTOR3_FORWARD (Vector3){ 0.0f, 0.0f, 1.0f }
-#define VECTOR3_BACKWARD (Vector3){ 0.0f, 0.0f, -1.0f }
-#define VECTOR3_RIGHT (Vector3){ 1.0f, 0.0f, 0.0f }
-#define VECTOR3_LEFT (Vector3){ -1.0f, 0.0f, 0.0f }
-
-#define EPSILON 0.0001f
-
-#define MIN3(a,b,c) (((a) < (b)) \
-	? ((a) < (c)) ? (a) : (c) \
-	: ((b) < (c)) ? (b) : (c))
-
-#define MAX3(a,b,c) (((a) > (b)) \
-	? ((a) > (c)) ? (a) : (c) \
-	: ((b) > (c)) ? (b) : (c))
 
 /**
  * Branchless absolute value for floats.
  * Clears the sign bit
  */
-f32 f32_abs(f32 value) {
+f32 math_f32_abs(f32 value) {
 	union {
         f32 f;
         u32 i;
@@ -40,7 +22,7 @@ f32 f32_abs(f32 value) {
 /**
 * A short, fast, branchless version of floor, rounding down to the nearest integer.
 */
-f32 f32_floor(f32 value) {
+f32 math_f32_floor(f32 value) {
 	/* Truncates it towards zero */
 	int i = (int)value;
 	/* Subtracts 1 if it was negative */
@@ -50,34 +32,29 @@ f32 f32_floor(f32 value) {
 /**
 * A short, fast, branchless version of ceiling, rounding up to the nearest integer.
 */
-f32 f32_ceiling(f32 value) {
+f32 math_f32_ceiling(f32 value) {
 	/* Truncates it towards zero */
 	int i = (int)value;
 	/* Adds 1 if it was positive */
 	return (float)(i + (i <= value));
 }
 
-/**
- * Returns whether a line defined by (x_0 + at, y_0 + bt, z_0 + ct) intersects with a given triangle
- */
-bool line_intersects_triangle(
-	float x_0, float y_0, float z_0, /* triangle point 1 */
-	float x_1, float y_1, float z_1, /* triangle point 2 */
-	float x_2, float y_2, float z_2, /* triangle point 3 */
+Vector3 math_triplane_line_intersection(
+	Vector3 tri_point_1,
+	Vector3 tri_point_2,
+	Vector3 tri_point_3,
 
-	/* line = (x_0 + at, y_0 + bt, z_0 + ct) */
-	float line_x_0, float a,
-	float line_y_0, float b,
-	float line_z_0, float c
+	Vector3 line_0, float a, float b, float c
 ) {
-	/* Triangle edges (for cross product) */
-	float e1x = x_1 - x_0;
-	float e1y = y_1 - y_0;
-	float e1z = z_1 - z_0;
+	Vector3 return_vec = VECTOR3_INFINITY;
 
-	float e2x = x_2 - x_0;
-	float e2y = y_2 - y_0;
-	float e2z = z_2 - z_0;
+	float e1x = tri_point_2.x - tri_point_1.x;
+	float e1y = tri_point_2.y - tri_point_1.y;
+	float e1z = tri_point_2.z - tri_point_1.z;
+
+	float e2x = tri_point_3.x - tri_point_1.x;
+	float e2y = tri_point_3.y - tri_point_1.y;
+	float e2z = tri_point_3.z - tri_point_1.z;
 
 	/* Triangle normal (via cross product of two edges) */
 	float nx = e1y * e2z - e1z * e2y;
@@ -87,30 +64,52 @@ bool line_intersects_triangle(
 	f32 denom = (nx * a) + (ny * b) + (nz * c);
 
 	/* denom = 0 means paralell to triangle. */
-	if (f32_abs(denom) < EPSILON) { return false; }
+	if (math_f32_abs(denom) >= EPSILON) {
+		float px = tri_point_1.x - line_0.x;
+		float py = tri_point_1.y - line_0.y;
+		float pz = tri_point_1.z - line_0.z;
+	
+		float t = (nx * px + ny * py + nz * pz) / denom;
 
-	float px = x_0 - line_x_0;
-	float py = y_0 - line_y_0;
-	float pz = z_0 - line_z_0;
+		return_vec.x = line_0.x + (a * t);
+		return_vec.y = line_0.y + (a * t);
+		return_vec.z = line_0.z + (a * t);
+	}
 
-	float t = (nx * px + ny * py + nz * pz) / denom;
+	return return_vec;
+}
 
-	float plane_intersect_x = line_x_0 + (a * t);
-	float plane_intersect_y = line_y_0 + (b * t);
-	float plane_intersect_z = line_z_0 + (c * t);
+/**
+ * Returns the pointer where a line defined by (x_0 + at, y_0 + bt, z_0 + ct) intersects with a given triangle
+ * 
+ * Returns infinity in the event that it doesn't.
+ */
+Vector3 math_line_triangle_intersection(
+	Vector3 tri_point_1,
+	Vector3 tri_point_2,
+	Vector3 tri_point_3,
+
+	/* line = (x_0 + at, y_0 + bt, z_0 + ct) */
+	Vector3 line_0, float a, float b, float c
+) {
+	Vector3 intersection = math_triplane_line_intersection(
+		tri_point_1, tri_point_2, tri_point_3,
+		line_0, a, b, c
+	);
+	if (Vector3Length(intersection) == INFINITY) { return intersection; }
 
 	/* Testing intersection via barycentric test */
-	float v0x = x_2 - x_0;
-	float v0y = y_2 - y_0;
-	float v0z = z_2 - z_0;
+	float v0x = tri_point_3.x - tri_point_1.x;
+	float v0y = tri_point_3.y - tri_point_1.y;
+	float v0z = tri_point_3.z - tri_point_1.z;
 
-	float v1x = x_1 - x_0;
-	float v1y = y_1 - y_0;
-	float v1z = z_1 - z_0;
+	float v1x = tri_point_2.x - tri_point_1.x;
+	float v1y = tri_point_2.y - tri_point_1.y;
+	float v1z = tri_point_2.z - tri_point_1.z;
 
-	float v2x = plane_intersect_x - x_0;
-	float v2y = plane_intersect_y - y_0;
-	float v2z = plane_intersect_z - z_0;
+	float v2x = intersection.x - tri_point_1.x;
+	float v2y = intersection.y - tri_point_1.y;
+	float v2z = intersection.z - tri_point_1.z;
 
 	/* Dot products: We agree! */
 	float dot00 = (v0x * v0x) + (v0y * v0y) + (v0z * v0z);
@@ -125,10 +124,14 @@ bool line_intersects_triangle(
 	float v = ((dot00 * dot12) - (dot01 * dot02)) * invDenom;
 
 	// Check if point is inside triangle
-	return (u >= 0.0f) && (v >= 0.0f) && (u + v <= 1.0f);
+	if ((u >= 0.0f) && (v >= 0.0f) && (u + v <= 1.0f)) {
+		return intersection;
+	} else {
+		return VECTOR3_INFINITY;
+	}
 }
 
-Matrix transform_to_matrix(Transform transform) {
+Matrix math_transform_to_matrix(Transform transform) {
 	/* Extract rotation basis */
 	Vector3 x = Vector3RotateByQuaternion(VECTOR3_RIGHT, transform.rotation);
 	Vector3 y = Vector3RotateByQuaternion(VECTOR3_UP, transform.rotation);

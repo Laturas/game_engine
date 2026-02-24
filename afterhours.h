@@ -1,5 +1,5 @@
-#ifndef AFTERHOURS
-	#define AFTERHOURS
+#ifndef AFTERHOURS_H
+	#define AFTERHOURS_H
 
 	#ifndef COMMON
 		#include "common.c"
@@ -11,8 +11,7 @@
 		#include "libs/include/rlgl.h"
 	#endif
 
-	#include "ui.c"
-	#include "collision.c"
-	#include "entities.c"
-	#include "afterhours.c"
+	#include "math.h"
+	#include "collision.h"
+	#include "entities.h"
 #endif

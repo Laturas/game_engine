@@ -319,6 +319,8 @@ bool string_eq(String str_1, String str_2) {
 * Indicates that an expression is unused. Gets compiled out.
 * This is so we can keep them around without them affecting overhead, and keeping documentation.
 */
-#define UNUSED(x) do {} while (0)
+#ifdef UNUSED
+	#undef UNUSED
+#endif
 
 #endif

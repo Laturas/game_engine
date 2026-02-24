@@ -1,104 +1,13 @@
 #pragma once
 
-#ifndef AFTERHOURS
+#ifndef AFTERHOURS_H
 	#include "afterhours.h"
 #endif
-
-#define VECTOR3_ZERO (Vector3){ 0.0f, 0.0f, 0.0f }
-#define VECTOR3_UP (Vector3){ 0.0f, 1.0f, 0.0f }
-#define VECTOR3_DOWN (Vector3){ 0.0f, -1.0f, 0.0f }
-#define VECTOR3_FORWARD (Vector3){ 0.0f, 0.0f, 1.0f }
-#define VECTOR3_BACKWARD (Vector3){ 0.0f, 0.0f, -1.0f }
-#define VECTOR3_RIGHT (Vector3){ 1.0f, 0.0f, 0.0f }
-#define VECTOR3_LEFT (Vector3){ -1.0f, 0.0f, 0.0f }
-
-/**
-* Todo: ModelID is going to eventually be a hash based on file name of the model.
-*
-* Zero will always be a special value that indicates "no model".
-*/
-typedef enum ModelID {
-	MODEL_NONE = 0,
-	MODEL_BOX,
-	MODEL_TORUS,
-
-	MODEL_ID_COUNT
-} ModelID;
-
-/**
-* This is for any and all data that is needed only for the editor.
-*
-* For example, entities need to have colliders in the editor so we can select them
-* even if they don't have any in the actual game.
-*/
-typedef struct EditorEntityData {
-	ModelID collider_model_id;
-	ModelID visible_model_id;
-} EditorEntityData;
-
-/**
- * Afterhours uses what's best described as an entity component system (ECS)
- * 
- * Many components only exist for the duration of a frame and are completley rebuilt from scratch each frame (collider, mesh, etc)
- * However, some things need to be persistent like the transform.
- * 
- * The fundamental goal: rebuild as much as possible from scratch every frame.
- * NEVER hold an entity pointer past the end of a frame.
- *
- * All entities will be in a big array, indexed into via ID. Everything is an entity. Even static objects.
- * (particles won't be, but they're special)
- */
-typedef struct Entity {
-	int entity_type;
-	Transform transform;
-	
-	ModelID collider_model_id;
-	ModelID visible_model_id;
-
-	EditorEntityData editor_data;
-} Entity;
-
-/**
- * StaticObjects are entirely built from scratch each frame.
- *
- * TODO: Do we actually want this to exist?
- */
-typedef struct StaticObject {
-	Transform transform;
-	LayerMask layer;
-	ModelID id;
-} StaticObject;
-
-typedef struct StaticObjectArray {
-	StaticObject* objects;
-	int len;
-} StaticObjectArray;
-
-Matrix TransformToMatrix(Transform transform) {
-	/* Extract rotation basis */
-	Vector3 x = Vector3RotateByQuaternion(VECTOR3_RIGHT, transform.rotation);
-	Vector3 y = Vector3RotateByQuaternion(VECTOR3_UP, transform.rotation);
-	Vector3 z = Vector3RotateByQuaternion(VECTOR3_FORWARD, transform.rotation);
-	
-	/* Scale basis vectors */
-	x = Vector3Scale(x, transform.scale.x);
-	y = Vector3Scale(y, transform.scale.y);
-	z = Vector3Scale(z, transform.scale.z);
-	
-	Vector3 t = transform.translation;
-	
-	return (Matrix){
-		x.x, y.x, z.x, t.x,
-		x.y, y.y, z.y, t.y,
-		x.z, y.z, z.z, t.z,
-		0.0f, 0.0f, 0.0f, 1.0f
-	};
-}
 
 /**
  * Handles things like terrain and other objects that do not change during their lifetime.
  */
-TriangleColliderArray static_object_loop(Arena* collider_data_arena, StaticObjectArray static_objects, const Model* const model_prefabs) {
+TriangleColliderArray static_object_loop(Arena* collider_data_arena, StaticObjectArray static_objects, const Model* model_prefabs) {
 	TriangleColliderArray tri_array = {0};
 
 	for (int i = 0; i < static_objects.len; i++) {
@@ -109,7 +18,7 @@ TriangleColliderArray static_object_loop(Arena* collider_data_arena, StaticObjec
 			TriangleCollider* tris = arena_alloc(collider_data_arena, sizeof(TriangleCollider) * total_tris);
 
 			for (int j = 0; j < total_tris; j += 1) {
-				Matrix t_matrix = TransformToMatrix(object.transform);
+				Matrix t_matrix = math_transform_to_matrix(object.transform);
 				int stride = 3;
 				Vector3 v1 = {
 					mesh.vertices[stride * (j * 3 + 0) + 0],
@@ -138,6 +47,8 @@ TriangleColliderArray static_object_loop(Arena* collider_data_arena, StaticObjec
 					.vert_1 = v1,
 					.vert_2 = v2,
 					.vert_3 = v3,
+					/* TODO: Introduce a better way to rep the entity id. */
+					.entity_id = i,
 				};
 
 				if (tri_array.colliders == NULL) {

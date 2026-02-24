@@ -10,66 +10,20 @@
  * - The only collider primitive that exists is a triangle, and all other colliders are derived from combinations of these
  */
 
-#ifndef AFTERHOURS
-	#include "common.c" 
-	#include "math.c"
-	#include "libs/include/raylib.h"
-	#include "libs/include/rlgl.h"
+#ifndef AFTERHOURS_H
+	#include "afterhours.h"
 #endif
-
-typedef int LayerMask;
-
-#define MASK_NO_COLLISIONS (LayerMask)0
-#define MASK_PLAYER (LayerMask)(1 << 0)
-#define MASK_STATIC_GEOMETRY (LayerMask)(1 << 1)
-#define MASK_ENEMIES (LayerMask)(1 << 2)
-
-typedef struct TriangleCollider {
-	LayerMask mask;
-
-	Vector3 vert_1;
-	Vector3 vert_2;
-	Vector3 vert_3;
-} TriangleCollider;
-
-typedef struct TriangleColliderArray {
-	int length;
-	TriangleCollider* colliders;
-} TriangleColliderArray;
-
-typedef struct ColliderColumnList {
-	struct ColliderColumnList* next;
-	struct TriangleCollider* collider;
-} ColliderColumnList;
-
-/**
- * Represents one unsorted vertical cell of colliders
- */
-typedef struct SpaceCell {
-	ColliderColumnList* list; 
-} SpaceCell;
-
-typedef struct SpacialHash {
-	BoundingBox world_bounding_box;
-	f32 cell_width;
-	struct SpaceCell* cells;
-} SpacialHash;
-
-/* Default width of cells in the spacial hash */
-#define DEFAULT_CELL_WIDTH 3.0f
 
 /**
 * Returns the bounding box for all active colliders.
 *
 * Returns an empty box (all zero) if there are no active colliders.
 */
-BoundingBox get_world_bounding_box(TriangleColliderArray static_colliders, TriangleColliderArray dynamic_colliders) {
+BoundingBox collision_get_world_bounding_box(TriangleColliderArray colliders) {
 	BoundingBox world_bounding_box = {0};
 
-	/* TODO: Bug in initial values probably */
-
-	for (int i = 0; i < static_colliders.length; i++) {
-		TriangleCollider collider = static_colliders.colliders[i];
+	for (int i = 0; i < colliders.length; i++) {
+		TriangleCollider collider = colliders.colliders[i];
 
 		/* Vertex 1 */
 		if (collider.vert_1.x > world_bounding_box.max.x) { world_bounding_box.max.x = collider.vert_1.x; }
@@ -101,47 +55,56 @@ BoundingBox get_world_bounding_box(TriangleColliderArray static_colliders, Trian
 		if (collider.vert_3.z > world_bounding_box.max.z) { world_bounding_box.max.z = collider.vert_3.z; }
 		if (collider.vert_3.z < world_bounding_box.min.z) { world_bounding_box.min.z = collider.vert_3.z; }
 	}
-
-	for (int i = 0; i < dynamic_colliders.length; i++) {
-		TriangleCollider collider = dynamic_colliders.colliders[i];
-
-		/* Vertex 1 */
-		if (collider.vert_1.x > world_bounding_box.max.x) { world_bounding_box.max.x = collider.vert_1.x; }
-		if (collider.vert_1.x < world_bounding_box.min.x) { world_bounding_box.min.x = collider.vert_1.x; }
-
-		if (collider.vert_1.y > world_bounding_box.max.y) { world_bounding_box.max.y = collider.vert_1.y; }
-		if (collider.vert_1.y < world_bounding_box.min.y) { world_bounding_box.min.y = collider.vert_1.y; }
-
-		if (collider.vert_1.z > world_bounding_box.max.z) { world_bounding_box.max.z = collider.vert_1.z; }
-		if (collider.vert_1.z < world_bounding_box.min.z) { world_bounding_box.min.z = collider.vert_1.z; }
-
-		/* Vertex 2 */
-		if (collider.vert_2.x > world_bounding_box.max.x) { world_bounding_box.max.x = collider.vert_2.x; }
-		if (collider.vert_2.x < world_bounding_box.min.x) { world_bounding_box.min.x = collider.vert_2.x; }
-
-		if (collider.vert_2.y > world_bounding_box.max.y) { world_bounding_box.max.y = collider.vert_2.y; }
-		if (collider.vert_2.y < world_bounding_box.min.y) { world_bounding_box.min.y = collider.vert_2.y; }
-
-		if (collider.vert_2.z > world_bounding_box.max.z) { world_bounding_box.max.z = collider.vert_2.z; }
-		if (collider.vert_2.z < world_bounding_box.min.z) { world_bounding_box.min.z = collider.vert_2.z; }
-
-		/* Vertex 3 */
-		if (collider.vert_3.x > world_bounding_box.max.x) { world_bounding_box.max.x = collider.vert_3.x; }
-		if (collider.vert_3.x < world_bounding_box.min.x) { world_bounding_box.min.x = collider.vert_3.x; }
-
-		if (collider.vert_3.y > world_bounding_box.max.y) { world_bounding_box.max.y = collider.vert_3.y; }
-		if (collider.vert_3.y < world_bounding_box.min.y) { world_bounding_box.min.y = collider.vert_3.y; }
-
-		if (collider.vert_3.z > world_bounding_box.max.z) { world_bounding_box.max.z = collider.vert_3.z; }
-		if (collider.vert_3.z < world_bounding_box.min.z) { world_bounding_box.min.z = collider.vert_3.z; }
-	}
-
 	return world_bounding_box;
 }
 
+RaycastHit collision_raycast(
+	const SpacialHash* spacial_hash,
+	LayerMask layer_mask,
+	Vector3 start_point,
+	Vector3 direction,
+	float raycast_length
+) {
+	RaycastHit rc_hit = (RaycastHit) {
+		.collider = NULL,
+		.entity_id = 0,
+		.point = VECTOR3_INFINITY,
+	};
+	f32 current_displacement = INFINITY;
 
+	/* TODO: Optimize this to actually use the spacial hash. Right now we just brute force. */
+	int cell_count = spacial_hash->x_axis_cell_count * spacial_hash->z_axis_cell_count;
 
-void collider_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash* spacial_hash, TriangleColliderArray collider_array) {
+	for (int i = 0; i < cell_count; i++) {
+		ColliderColumnList* list = spacial_hash->cells[i].list;
+
+		while (list != NULL) {
+			TriangleCollider col = *list->collider;
+
+			if (list->collider->mask & layer_mask) {
+				Vector3 intersection_point = math_line_triangle_intersection(
+					col.vert_1, col.vert_2, col.vert_3,
+					start_point,
+					direction.x, direction.y, direction.z
+				);
+				Vector3 displacement_vec = Vector3Subtract(intersection_point, start_point);
+				f32 displacement = Vector3Length(displacement_vec);
+
+				if (displacement < raycast_length && displacement < current_displacement) {
+					rc_hit.collider = list->collider;
+					rc_hit.point = intersection_point;
+					rc_hit.entity_id = col.entity_id;
+
+					current_displacement = displacement;
+				}
+			}
+			list = list->next;
+		}
+	}
+	return rc_hit;
+}
+
+void collision_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash* spacial_hash, TriangleColliderArray collider_array) {
 	for (int i = 0; i < collider_array.length; i++) {
 		/* Inserts each collider triangle into the spacial hash */
 		TriangleCollider tri = collider_array.colliders[i];
@@ -164,8 +127,8 @@ void collider_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash*
 			f32 min_cell_z_f32_no_offset = (min_z - spacial_hash->world_bounding_box.min.z);
 			f32 min_cell_z_f32_no_scale  = min_cell_z_f32_no_offset / cell_width;
 			
-			min_cell_x = (int)f32_floor(min_cell_x_f32_no_scale);
-			min_cell_z = (int)f32_floor(min_cell_z_f32_no_scale);
+			min_cell_x = (int)math_f32_floor(min_cell_x_f32_no_scale);
+			min_cell_z = (int)math_f32_floor(min_cell_z_f32_no_scale);
 		}
 
 
@@ -177,23 +140,16 @@ void collider_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash*
 			f32 max_cell_z_f32_no_offset = (max_z - spacial_hash->world_bounding_box.min.z);
 			f32 max_cell_z_f32_no_scale  = max_cell_z_f32_no_offset / cell_width;
 	
-			max_cell_x = (int)f32_floor(max_cell_x_f32_no_scale);
-			max_cell_z = (int)f32_floor(max_cell_z_f32_no_scale);
+			max_cell_x = (int)math_f32_floor(max_cell_x_f32_no_scale);
+			max_cell_z = (int)math_f32_floor(max_cell_z_f32_no_scale);
 		}
 
-		u32 x_axis_cell_count = (
-			spacial_hash->world_bounding_box.max.x - spacial_hash->world_bounding_box.min.x
-		) / spacial_hash->cell_width
-		+ 1;
-
 		/* Extra tests */ {
-			u32 y_axis_cell_count = (
-				spacial_hash->world_bounding_box.max.z - spacial_hash->world_bounding_box.min.z
-			) / spacial_hash->cell_width
-			+ 1;
-			
+			int max_x = spacial_hash->x_axis_cell_count;
+			int max_z = spacial_hash->z_axis_cell_count;
+
 			if (NEVER(min_cell_x < 0 || min_cell_z < 0)) { continue; }
-			if (NEVER(max_cell_x >= x_axis_cell_count || max_cell_z >= y_axis_cell_count)) { continue; }
+			if (NEVER(max_cell_x >= max_x || max_cell_z >= max_z)) { continue; }
 		}
 
 
@@ -205,9 +161,9 @@ void collider_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash*
 
 				/* TODO: Make relative pointer */
 				list_node->collider = &collider_array.colliders[i];
-				list_node->next = spacial_hash->cells[(x_axis_cell_count * z) + x].list;
+				list_node->next = spacial_hash->cells[(spacial_hash->x_axis_cell_count * z) + x].list;
 
-				spacial_hash->cells[(x_axis_cell_count * z) + x].list = list_node;
+				spacial_hash->cells[(spacial_hash->x_axis_cell_count * z) + x].list = list_node;
 			}
 		}
 	}
@@ -216,32 +172,25 @@ void collider_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash*
 /**
 * Constructs the spacial hash for all colliders
 */
-SpacialHash collider_spacial_hash_create(Arena* collider_data_arena, TriangleColliderArray static_colliders, TriangleColliderArray dynamic_colliders) {
+SpacialHash collision_spacial_hash_create(Arena* collider_data_arena, TriangleColliderArray static_colliders) {
+	BoundingBox world_bound = collision_get_world_bounding_box(static_colliders);
 	SpacialHash spacial_hash = (SpacialHash) {
 		.cell_width = DEFAULT_CELL_WIDTH,
-		.world_bounding_box = get_world_bounding_box(static_colliders, dynamic_colliders),
+		.world_bounding_box = collision_get_world_bounding_box(static_colliders),
 		.cells = NULL,
+		.x_axis_cell_count = ((world_bound.max.x - world_bound.min.x) / DEFAULT_CELL_WIDTH) + 1,
+		.z_axis_cell_count = ((world_bound.max.z - world_bound.min.z) / DEFAULT_CELL_WIDTH) + 1
 	};
 
-	u32 x_axis_cell_count = (
-		spacial_hash.world_bounding_box.max.x - spacial_hash.world_bounding_box.min.x
-	) / DEFAULT_CELL_WIDTH
-	+ 1;
+	spacial_hash.cells = arena_alloc(collider_data_arena, sizeof(*spacial_hash.cells) * spacial_hash.x_axis_cell_count * spacial_hash.z_axis_cell_count);
 
-	u32 y_axis_cell_count = (
-		spacial_hash.world_bounding_box.max.z - spacial_hash.world_bounding_box.min.z
-	) / DEFAULT_CELL_WIDTH
-	+ 1;
-
-	spacial_hash.cells = arena_alloc(collider_data_arena, sizeof(*spacial_hash.cells) * x_axis_cell_count * y_axis_cell_count);
-
-	for (int y = 0; y < y_axis_cell_count; y++) {
-		for (int x = 0; x < x_axis_cell_count; x++) {
-			spacial_hash.cells[(x_axis_cell_count * y) + x] = (SpaceCell) { .list = NULL };
+	for (int z = 0; z < spacial_hash.z_axis_cell_count; z++) {
+		for (int x = 0; x < spacial_hash.x_axis_cell_count; x++) {
+			spacial_hash.cells[(spacial_hash.x_axis_cell_count * z) + x] = (SpaceCell) { .list = NULL };
 		}
 	}
 
-	collider_spacial_hash_insert_array(collider_data_arena, &spacial_hash, static_colliders);
+	collision_spacial_hash_insert_array(collider_data_arena, &spacial_hash, static_colliders);
 
 	return spacial_hash;
 }
