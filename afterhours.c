@@ -6,6 +6,7 @@
 #include "collision.c"
 #include "entities.c"
 #include "ui.c"
+#include "immediate_ui.c"
 
 
 /* Leave this undefined. This is a region. */
@@ -171,8 +172,33 @@ void editor_loop(
 			}
 		EndMode3D();
 
-		draw_editor_ui();
+		#ifdef UNUSED
+			draw_editor_ui();
+		#endif
 
+		Arena ui_arena = {0};
+		UICommandContext context = {0};
+		UIRegionParameters params = {
+			.background_color = SKYBLUE,
+			.background_fade = 0.5f,
+			.border_color = RAYWHITE,
+			.border_fade = 0.9f,
+			.horizontal_spacing = 15,
+			.vertical_spacing = 15,
+		};
+
+		Rectangle screen_rect = { .height = GetScreenHeight(), .width = GetScreenWidth(), .x = 0.0f, .y = 0.0f };
+		
+		imui_region_begin(&ui_arena, &context, screen_rect, IMDIR_VERTICAL, (UIRegionParameters){0});
+
+			imui_draw_fps(&ui_arena, &context);
+			imui_draw_text(&ui_arena, &context, (String) {"Hello", sizeof("Hello")}, RAYWHITE, 1.0f, 12.0f);
+
+		imui_region_end(&ui_arena, &context);
+
+		imui_render_region(context);
+
+		arena_free(&ui_arena);
 	EndDrawing();
 }
 

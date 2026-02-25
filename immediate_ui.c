@@ -31,6 +31,7 @@ typedef enum UICommandType {
 	IMUI_BUTTON,
 	IMUI_CHECKBOX,
 	IMUI_REGION,
+	IMUI_END_REGION,
 
 	IMUI_COUNT
 } UICommandType;
@@ -50,6 +51,9 @@ typedef struct UICommandFPS {
 
 typedef struct UICommandText {
 	String text;
+	Color color;
+	float text_fade;
+	float font_size;
 } UICommandText;
 
 typedef struct UICommandPageList {
@@ -81,9 +85,10 @@ typedef struct UICommandEndRegion {
 
 typedef union UIUnion {
 	UICommandNone none;
-	UICommandFPS fps;
 	UICommandRegion region;
 	UICommandEndRegion end_region;
+	UICommandFPS fps;
+	UICommandText text;
 } UIUnion;
 
 typedef struct UICommand {
@@ -116,6 +121,28 @@ void imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
 	}
 }
 
+void imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Color color, float text_fade, float font_size) {
+	UICommand* text_command = arena_alloc(ui_arena, sizeof(*text_command));
+
+	text_command->next_command = NULL;
+	text_command->callback_fptr = NULL;
+	text_command->type = IMUI_REGION;
+	text_command->command_data.text = (UICommandText) {
+		.color = color,
+		.font_size = font_size,
+		.text = text,
+		.text_fade = text_fade
+	};
+
+	if (context->head == NULL) {
+		context->head = text_command;
+		context->tail = text_command;
+	} else {
+		context->tail->next_command = text_command;
+		context->tail = text_command;
+	}
+}
+
 void imui_region_begin(
 	Arena* ui_arena,
 	UICommandContext* context,
@@ -143,11 +170,30 @@ void imui_region_begin(
 	}
 }
 
-void imui_render_region(UICommandContext context, UICommandRegion region) {
+void imui_region_end(Arena* ui_arena, UICommandContext* context) {
+	UICommand* end_region = arena_alloc(ui_arena, sizeof(*end_region));
+
+	end_region->next_command = NULL;
+	end_region->callback_fptr = NULL;
+	end_region->type = IMUI_END_REGION;
+
+	if (context->head == NULL) {
+		context->head = end_region;
+		context->tail = end_region;
+	} else {
+		context->tail->next_command = end_region;
+		context->tail = end_region;
+	}
+}
+
+void imui_render_region(UICommandContext context) {
 	UICommand* command = context.head;
-	Rectangle rect = region.bounding_rect;
+	Rectangle rect = command->command_data.region.bounding_rect;
+	UIDirection dir = command->command_data.region.direction;
 	float bg_fade = command->command_data.region.params.background_fade; 
-	float border_fade = command->command_data.region.params.border_fade; 
+	float border_fade = command->command_data.region.params.border_fade;
+
+	Vector2 cursor_position = (Vector2) { rect.x, rect.y }; 
 
 	if (bg_fade > 0.0f) {
 		Color rect_color = Fade(command->command_data.region.params.background_color, command->command_data.region.params.background_fade);
@@ -160,13 +206,41 @@ void imui_render_region(UICommandContext context, UICommandRegion region) {
 
 	command = command->next_command;
 	while (command != NULL) {
+		int update_by = 0;
 		switch (command->type) {
 			case IMUI_NONE: break;
 
 			case IMUI_TEXT: {
+				UICommandText text_data = command->command_data.text;
+				Color text_color = Fade(text_data.color, text_data.text_fade);
+				DrawTextEx(GetFontDefault(), text_data.text.str, cursor_position, text_data.font_size, 2.0f, text_color);
 
+				update_by = (dir == IMDIR_VERTICAL) ? (int)text_data.font_size : text_data.text.length * (int)text_data.font_size;
+			} break;
+
+			case IMUI_FPS: {
+				DrawFPS(cursor_position.x, cursor_position.y);
+			} break;
+
+			case IMUI_REGION: {
+				UICommandContext tmp_context = { .head = command, .tail = context.tail };
+				imui_render_region(tmp_context);
+
+				update_by = (dir == IMDIR_VERTICAL) ? command->command_data.region.bounding_rect.height : command->command_data.region.bounding_rect.width;
+			} break;
+
+			case IMUI_END_REGION: {
+				return;
 			} break;
 		}
+
+		if (dir == IMDIR_VERTICAL) {
+			cursor_position.y += update_by;
+		} else {
+			cursor_position.x += update_by;
+		}
+
+		command = command->next_command;
 	}
 }
 
