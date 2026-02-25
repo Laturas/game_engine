@@ -370,7 +370,6 @@ int afterhours_main(int argc, char* argv[]) {
 		}
 		if (loop_mode == GAMELOOP_EDITOR) {
 			TriangleColliderArray static_colliders = static_object_loop(&collider_data_arena, so_array, model_prefabs);
-			TriangleColliderArray dynamic_colliders = { .colliders = NULL, .length = 0 };
 			SpacialHash collider_spacial_hash = collision_spacial_hash_create(&collider_data_arena, static_colliders);
 			editor_loop(
 				&main_camera,
