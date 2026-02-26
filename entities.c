@@ -69,7 +69,7 @@ typedef struct StaticObjectArray {
 /**
  * Handles things like terrain and other objects that do not change during their lifetime.
  */
-TriangleColliderArray fn static_object_loop(Arena* collider_data_arena, StaticObjectArray static_objects, const Model* model_prefabs) {
+TriangleColliderArray static_object_loop(Arena* collider_data_arena, StaticObjectArray static_objects, const Model* model_prefabs) {
 	TriangleColliderArray tri_array = {0};
 
 	for (int i = 0; i < static_objects.len; i++) {

@@ -105,7 +105,7 @@ typedef struct UICommandContext {
 	UICommand* tail;
 } UICommandContext;
 
-void fn imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
+void imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
 	UICommand* command = arena_alloc(ui_arena, sizeof(*command));
 
 	command->command_data.fps = (UICommandFPS) {
@@ -123,7 +123,7 @@ void fn imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
 	}
 }
 
-void fn imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Color color, float text_fade, float font_size) {
+void imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Color color, float text_fade, float font_size) {
 	UICommand* text_command = arena_alloc(ui_arena, sizeof(*text_command));
 
 	text_command->next_command = NULL;
@@ -145,7 +145,7 @@ void fn imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, 
 	}
 }
 
-void fn imui_region_begin(
+void imui_region_begin(
 	Arena* ui_arena,
 	UICommandContext* context,
 	Rectangle region_rect,
@@ -172,7 +172,7 @@ void fn imui_region_begin(
 	}
 }
 
-void fn imui_region_end(Arena* ui_arena, UICommandContext* context) {
+void imui_region_end(Arena* ui_arena, UICommandContext* context) {
 	UICommand* end_region = arena_alloc(ui_arena, sizeof(*end_region));
 
 	end_region->next_command = NULL;
@@ -236,6 +236,10 @@ UICommand* imui_render_region_internal(UICommandContext context) {
 			case IMUI_END_REGION: {
 				return command;
 			} break;
+
+			default: {
+				ASSERT(!"Render command type not handled");
+			} break;
 		}
 
 		if (dir == IMDIR_VERTICAL) {
@@ -249,7 +253,7 @@ UICommand* imui_render_region_internal(UICommandContext context) {
 	return NULL;
 }
 
-void fn imui_context_render(UICommandContext context) {
+void imui_context_render(UICommandContext context) {
 	if (context.head == NULL) { return; }
 
 	if (context.head->type != IMUI_REGION) {

@@ -26,15 +26,15 @@
 	: ((b) > (c)) ? (b) : (c))
 
 /* Branchless absolute value for floats. Clears the sign bit */
-f32 fn math_f32_abs(f32 value);
+f32 math_f32_abs(f32 value);
 
 /* A short, fast, branchless version of floor, rounding down to the nearest integer. */
-f32 fn math_f32_floor(f32 value);
+f32 math_f32_floor(f32 value);
 
 /* A short, fast, branchless version of ceiling, rounding up to the nearest integer. */
-f32 fn math_f32_ceiling(f32 value);
+f32 math_f32_ceiling(f32 value);
 
-Vector3 fn math_triplane_line_intersection(
+Vector3 math_triplane_line_intersection(
 	Vector3 tri_point_1,
 	Vector3 tri_point_2,
 	Vector3 tri_point_3,
@@ -47,7 +47,7 @@ Vector3 fn math_triplane_line_intersection(
  * 
  * Returns infinity in the event that it doesn't.
  */
-Vector3 fn math_line_triangle_intersection(
+Vector3 math_line_triangle_intersection(
 	Vector3 tri_point_1,
 	Vector3 tri_point_2,
 	Vector3 tri_point_3,
@@ -57,4 +57,4 @@ Vector3 fn math_line_triangle_intersection(
 );
 
 /* Extracts the transform matrix from a Transform struct. */
-Matrix fn math_transform_to_matrix(Transform transform);
+Matrix math_transform_to_matrix(Transform transform);

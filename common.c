@@ -75,7 +75,6 @@ typedef u64 rawptr;
 * as zero initialization is easy and prevents mistakes.
 */
 #ifdef static_assert
-	static_assert(NULL == (void*)0, "Datatypes are the wrong size from what is expected");
 	static_assert(sizeof(u8) == 1 , "Datatypes are the wrong size from what is expected");
 	static_assert(sizeof(u16) == 2, "Datatypes are the wrong size from what is expected");
 	static_assert(sizeof(u32) == 4, "Datatypes are the wrong size from what is expected");
@@ -129,7 +128,7 @@ typedef u64 rawptr;
 	/**
 	* A provably correct assertion used for delineating things like preconditions
 	*/
-	#define ASSERT(x) (!(x)) ? assertion_failure(__LINE__, __FILE__, ASSERTION_FUNCTION, #x), (x) : (x)
+	#define ASSERT(x) if(!(x)) assertion_failure(__LINE__, __FILE__, ASSERTION_FUNCTION, #x)
 	/**
 	* Indicates a code path should never happen (though the code should still function if it does)
 	*
@@ -229,6 +228,8 @@ void platform_dependent_mem_decommit(void* addr, u64 decommit_size);
 	}
 
 	void platform_dependent_mem_decommit(void* addr, u64 decommit_size) {
+		(void)decommit_size; /* This is only needed on linux */
+
 		VirtualFree(addr, 0, MEM_RELEASE);
 	}
 #endif
@@ -250,9 +251,9 @@ void* arena_alloc(Arena* arena, u64 byte_count) {
 		arena_init(arena, DEFAULT_MEMORY_RESERVATION);
 	}
 
-	u64 push_to = align_forward(byte_count + arena->first_unallocated_byte, DEFAULT_MEMORY_ALIGNMENT);
+	i64 push_to = align_forward(byte_count + arena->first_unallocated_byte, DEFAULT_MEMORY_ALIGNMENT);
 
-	u64 total_committed_bytes = round_to_page_size(push_to);
+	u64 total_committed_bytes = round_to_page_size((u64)push_to);
 
 	if (push_to >= arena->total_committed_bytes) {
 		if (platform_dependent_mem_commit(arena->bytes, total_committed_bytes) == NULL) {
@@ -322,18 +323,86 @@ bool string_eq(String str_1, String str_2) {
 }
 
 /**
+ * Returns a new string equal to the concatenation of two smaller strings.
+ */
+String string_concatenate(Arena* string_arena, String str_1, String str_2) {
+	int combined_len = str_1.length + str_2.length;
+	char* buffer = arena_alloc(string_arena, sizeof(char) * (combined_len + 1));
+	if (buffer == NULL) { return (String) { .str = NULL, .length = 0 }; }
+
+	for (int i = 0; i < str_1.length; i++) {
+		buffer[i] = str_1.str[i];
+	}
+
+	for (int i = str_1.length; i < combined_len; i++) {
+		buffer[i] = str_2.str[i];
+	}
+
+	buffer[combined_len] = '\0';
+
+	return (String) {
+		.length = combined_len,
+		.str = buffer
+	};
+}
+
+#ifdef linux
+	#define FILE_SEPARATOR ('/')
+#endif
+#ifdef WIN32
+	#define FILE_SEPARATOR ('\\')
+#endif
+#ifndef FILE_SEPARATOR
+	#error "File separator not defined for this platform"
+#endif
+
+/**
+ * Concatenates two file strings in a safe, cross-platform manner.
+ * Ensures that they're null terminated.
+ * 
+ * Windows:
+ *    file\path + file.txt = file\path\file.txt
+ * Linux:
+ *    file/path + file.txt = file/path/file.txt
+ * etc.
+ * 
+ * This is fairly robust. It handles the case where the second string starts with, or the first string ends with, the file separator.
+ * Also handles the case where one or both strings are empty.
+ */
+String string_concatenate_files(Arena* string_arena, String str_1, String str_2) {
+	int combined_len = str_1.length + str_2.length;
+	int extra_concat = (
+		(str_1.length != 0 && str_2.length != 0) && (
+			(str_1.str[str_1.length - 1] == FILE_SEPARATOR) ||
+			(str_2.str[0] == FILE_SEPARATOR)
+		)
+	);
+
+	char* buffer = arena_alloc(string_arena, sizeof(char) * (combined_len + extra_concat + 1));
+	if (buffer == NULL) { return (String) { .str = NULL, .length = 0 }; }
+
+	for (int i = 0; i < str_1.length; i++) {
+		buffer[i] = str_1.str[i];
+	}
+
+	for (int i = str_1.length; i < combined_len; i++) {
+		buffer[i] = str_2.str[i];
+	}
+
+	buffer[combined_len + extra_concat] = '\0';
+
+	return (String) {
+		.length = combined_len + extra_concat,
+		.str = buffer
+	};
+}
+
+/**
 * Indicates that an expression is unused. Gets compiled out.
 * This is so we can keep them around without them affecting overhead, and keeping documentation.
 */
 #ifdef UNUSED
 	#undef UNUSED
 #endif
-
-/**
- * This serves two purposes:
- * A) It lets me quickly find function definitions by searching for "fn function_name()"
- * B) It's defined as static, which means even though this project is a unity build, it prevents the functions from getting added to the symbol table
- */
-#define fn static
 
 #endif

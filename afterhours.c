@@ -33,7 +33,7 @@
 	void CameraMoveForward(Camera *camera, float distance, bool moveInWorldPlane);
 #endif
 
-void fn update_editor_camera(Camera *camera) {
+void update_editor_camera(Camera *camera) {
 	Vector2 mousePositionDelta = GetMouseDelta();
 
 	int mode = CAMERA_FREE;
@@ -104,7 +104,7 @@ void fn update_editor_camera(Camera *camera) {
 	}
 }
 
-Transform fn default_transform() {
+Transform default_transform() {
 	return (Transform) {
 		.rotation = QuaternionIdentity(),
 		.scale = (Vector3) {1.0f, 1.0f, 1.0f},
@@ -112,13 +112,13 @@ Transform fn default_transform() {
 	};
 }
 
-void fn draw_model(ModelID model_id, const Model* model_prefabs, Transform model_transform) {
+void draw_model(ModelID model_id, const Model* model_prefabs, Transform model_transform) {
 	if (model_id == MODEL_NONE) { return; }
 
 	DrawModelEx(model_prefabs[model_id], model_transform.translation, VECTOR3_UP, 0.0f, model_transform.scale, WHITE);
 }
 
-void fn editor_draw_ui() {
+void editor_draw_ui() {
 	Arena ui_arena = {0};
 	UICommandContext context = {0};
 	UIRegionParameters params = {
@@ -150,7 +150,7 @@ void fn editor_draw_ui() {
 	arena_free(&ui_arena);
 }
 
-void fn editor_loop(
+void editor_loop(
 	Camera*               main_camera,
 	StaticObjectArray     static_objects,
 	const Model*          model_prefabs,
@@ -297,7 +297,7 @@ enum game_loop {
 
 enum game_loop loop_mode;
 
-void fn initialize_model(Model* model_prefab, ModelID model_to_load) {
+void initialize_model(Model* model_prefab, ModelID model_to_load) {
 	switch (model_to_load) {
 		case MODEL_NONE: {
 			*model_prefab = (Model) {0};
@@ -318,7 +318,7 @@ void fn initialize_model(Model* model_prefab, ModelID model_to_load) {
 	}
 }
 
-void fn initialize_models(Model* model_prefabs, int model_count) {
+void initialize_models(Model* model_prefabs, int model_count) {
 	for (int i = 0; i < model_count; i++) {
 		initialize_model(&(model_prefabs[i]), (ModelID)i);
 	}
@@ -327,7 +327,7 @@ void fn initialize_models(Model* model_prefabs, int model_count) {
 /**
 * Static objects will be initialized on scene load. This is a temporary function for test purposes.
 */
-StaticObjectArray fn test_initialize_static_objects(Arena* static_object_data) {
+StaticObjectArray test_initialize_static_objects(Arena* static_object_data) {
 	int object_count = 3;
 	StaticObject* object_array = arena_alloc(static_object_data, sizeof(*object_array) * object_count);
 
@@ -361,7 +361,7 @@ StaticObjectArray fn test_initialize_static_objects(Arena* static_object_data) {
 	};
 }
 
-int fn afterhours_main(int argc, char* argv[]) {
+int afterhours_main(void) {
 	const int screenWidth = 1600;
 	const int screenHeight = 900;
 
