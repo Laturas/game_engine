@@ -37,24 +37,30 @@ typedef u8 b8;
 typedef u16 b16;
 typedef u32 b32;
 typedef u64 b64;
-#define bool int
+#ifndef bool
+	#define bool int
+#endif
 
 /**
 * rawptr is some type large enough to hold a pointer.
 * This is for doing raw arithmetic on them.
 */
 typedef u64 rawptr;
+#ifndef true
+	/**
+	* Unsized truthy value.
+	* This value is _never_ compared directly against in the form of if (x == true)
+	*/
+	#define true (bool)1
+#endif
 
-/**
-* Unsized truthy value.
-* This value is _never_ compared directly against in the form of if (x == true)
-*/
-#define true (bool)1
-/**
-* Unsized falsy value.
-* This value is _never_ compared directly against in the form of if (x == false)
-*/
-#define false (bool)0
+#ifndef false
+	/**
+	* Unsized falsy value.
+	* This value is _never_ compared directly against in the form of if (x == false)
+	*/
+	#define false (bool)0
+#endif
 
 #ifndef NULL
 	#define NULL (void*)0
@@ -322,5 +328,12 @@ bool string_eq(String str_1, String str_2) {
 #ifdef UNUSED
 	#undef UNUSED
 #endif
+
+/**
+ * This serves two purposes:
+ * A) It lets me quickly find function definitions by searching for "fn function_name()"
+ * B) It's defined as static, which means even though this project is a unity build, it prevents the functions from getting added to the symbol table
+ */
+#define fn static
 
 #endif

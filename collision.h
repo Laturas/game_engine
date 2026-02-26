@@ -56,15 +56,15 @@ typedef struct RaycastHit {
 #define DEFAULT_CELL_WIDTH 3.0f
 
 /* Returns the bounding box for all active colliders. Returns an empty box (all zero) if there are no active colliders. */
-BoundingBox collision_get_world_bounding_box(TriangleColliderArray static_colliders);
+BoundingBox fn collision_get_world_bounding_box(TriangleColliderArray static_colliders);
 
 /* Inserts an array of triangle colliders into a spacial hash. Allocates internal spacial_hash structure into the collider data arena. */
-void collision_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash* spacial_hash, TriangleColliderArray collider_array);
+void fn collision_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash* spacial_hash, TriangleColliderArray collider_array);
 
 /* Constructs the spacial hash for all colliders */
-SpacialHash collision_spacial_hash_create(Arena* collider_data_arena, TriangleColliderArray static_colliders);
+SpacialHash fn collision_spacial_hash_create(Arena* collider_data_arena, TriangleColliderArray static_colliders);
 
-RaycastHit collision_raycast(
+RaycastHit fn collision_raycast(
 	const SpacialHash* spacial_hash,
 	LayerMask layer_mask,
 	Vector3 start_point,

@@ -19,7 +19,7 @@
 *
 * Returns an empty box (all zero) if there are no active colliders.
 */
-BoundingBox collision_get_world_bounding_box(TriangleColliderArray colliders) {
+BoundingBox fn collision_get_world_bounding_box(TriangleColliderArray colliders) {
 	BoundingBox world_bounding_box = {0};
 
 	for (int i = 0; i < colliders.length; i++) {
@@ -58,7 +58,7 @@ BoundingBox collision_get_world_bounding_box(TriangleColliderArray colliders) {
 	return world_bounding_box;
 }
 
-RaycastHit collision_raycast(
+RaycastHit fn collision_raycast(
 	const SpacialHash* spacial_hash,
 	LayerMask layer_mask,
 	Vector3 start_point,
@@ -104,7 +104,7 @@ RaycastHit collision_raycast(
 	return rc_hit;
 }
 
-void collision_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash* spacial_hash, TriangleColliderArray collider_array) {
+void fn collision_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash* spacial_hash, TriangleColliderArray collider_array) {
 	for (int i = 0; i < collider_array.length; i++) {
 		/* Inserts each collider triangle into the spacial hash */
 		TriangleCollider tri = collider_array.colliders[i];
@@ -172,7 +172,7 @@ void collision_spacial_hash_insert_array(Arena* collider_data_arena, SpacialHash
 /**
 * Constructs the spacial hash for all colliders
 */
-SpacialHash collision_spacial_hash_create(Arena* collider_data_arena, TriangleColliderArray static_colliders) {
+SpacialHash fn collision_spacial_hash_create(Arena* collider_data_arena, TriangleColliderArray static_colliders) {
 	BoundingBox world_bound = collision_get_world_bounding_box(static_colliders);
 	SpacialHash spacial_hash = (SpacialHash) {
 		.cell_width = DEFAULT_CELL_WIDTH,

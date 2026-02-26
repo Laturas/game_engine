@@ -8,7 +8,7 @@
  * Branchless absolute value for floats.
  * Clears the sign bit
  */
-f32 math_f32_abs(f32 value) {
+f32 fn math_f32_abs(f32 value) {
 	union {
         f32 f;
         u32 i;
@@ -22,7 +22,7 @@ f32 math_f32_abs(f32 value) {
 /**
 * A short, fast, branchless version of floor, rounding down to the nearest integer.
 */
-f32 math_f32_floor(f32 value) {
+f32 fn math_f32_floor(f32 value) {
 	/* Truncates it towards zero */
 	int i = (int)value;
 	/* Subtracts 1 if it was negative */
@@ -32,14 +32,14 @@ f32 math_f32_floor(f32 value) {
 /**
 * A short, fast, branchless version of ceiling, rounding up to the nearest integer.
 */
-f32 math_f32_ceiling(f32 value) {
+f32 fn math_f32_ceiling(f32 value) {
 	/* Truncates it towards zero */
 	int i = (int)value;
 	/* Adds 1 if it was positive */
 	return (float)(i + (i <= value));
 }
 
-Vector3 math_triplane_line_intersection(
+Vector3 fn math_triplane_line_intersection(
 	Vector3 tri_point_1,
 	Vector3 tri_point_2,
 	Vector3 tri_point_3,
@@ -84,7 +84,7 @@ Vector3 math_triplane_line_intersection(
  * 
  * Returns infinity in the event that it doesn't.
  */
-Vector3 math_line_triangle_intersection(
+Vector3 fn math_line_triangle_intersection(
 	Vector3 tri_point_1,
 	Vector3 tri_point_2,
 	Vector3 tri_point_3,
@@ -131,7 +131,7 @@ Vector3 math_line_triangle_intersection(
 	}
 }
 
-Matrix math_transform_to_matrix(Transform transform) {
+Matrix fn math_transform_to_matrix(Transform transform) {
 	/* Extract rotation basis */
 	Vector3 x = Vector3RotateByQuaternion(VECTOR3_RIGHT, transform.rotation);
 	Vector3 y = Vector3RotateByQuaternion(VECTOR3_UP, transform.rotation);

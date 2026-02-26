@@ -1,5 +1,7 @@
 /**
 * Handles the immediate mode UI for the engine editor interface.
+*
+* It isn't very good right now. Heavily WIP. 
 */
 #include "libs/include/raylib.h"
 #ifndef AFTERHOURS_H
@@ -103,7 +105,7 @@ typedef struct UICommandContext {
 	UICommand* tail;
 } UICommandContext;
 
-void imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
+void fn imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
 	UICommand* command = arena_alloc(ui_arena, sizeof(*command));
 
 	command->command_data.fps = (UICommandFPS) {
@@ -121,12 +123,12 @@ void imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
 	}
 }
 
-void imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Color color, float text_fade, float font_size) {
+void fn imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Color color, float text_fade, float font_size) {
 	UICommand* text_command = arena_alloc(ui_arena, sizeof(*text_command));
 
 	text_command->next_command = NULL;
 	text_command->callback_fptr = NULL;
-	text_command->type = IMUI_REGION;
+	text_command->type = IMUI_TEXT;
 	text_command->command_data.text = (UICommandText) {
 		.color = color,
 		.font_size = font_size,
@@ -143,7 +145,7 @@ void imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Col
 	}
 }
 
-void imui_region_begin(
+void fn imui_region_begin(
 	Arena* ui_arena,
 	UICommandContext* context,
 	Rectangle region_rect,
@@ -170,7 +172,7 @@ void imui_region_begin(
 	}
 }
 
-void imui_region_end(Arena* ui_arena, UICommandContext* context) {
+void fn imui_region_end(Arena* ui_arena, UICommandContext* context) {
 	UICommand* end_region = arena_alloc(ui_arena, sizeof(*end_region));
 
 	end_region->next_command = NULL;
@@ -186,14 +188,14 @@ void imui_region_end(Arena* ui_arena, UICommandContext* context) {
 	}
 }
 
-void imui_render_region(UICommandContext context) {
+UICommand* imui_render_region_internal(UICommandContext context) {
 	UICommand* command = context.head;
 	Rectangle rect = command->command_data.region.bounding_rect;
 	UIDirection dir = command->command_data.region.direction;
 	float bg_fade = command->command_data.region.params.background_fade; 
 	float border_fade = command->command_data.region.params.border_fade;
 
-	Vector2 cursor_position = (Vector2) { rect.x, rect.y }; 
+	Vector2 cursor_position = (Vector2) { rect.x + command->command_data.region.params.horizontal_spacing, rect.y + command->command_data.region.params.vertical_spacing }; 
 
 	if (bg_fade > 0.0f) {
 		Color rect_color = Fade(command->command_data.region.params.background_color, command->command_data.region.params.background_fade);
@@ -201,7 +203,7 @@ void imui_render_region(UICommandContext context) {
 	}
 	if (border_fade > 0.0f) {
 		Color border_color = Fade(command->command_data.region.params.border_color, command->command_data.region.params.border_fade);
-		DrawRectangle(rect.x, rect.y, rect.width, rect.height, border_color);
+		DrawRectangleLines(rect.x, rect.y, rect.width, rect.height, border_color);
 	}
 
 	command = command->next_command;
@@ -220,17 +222,19 @@ void imui_render_region(UICommandContext context) {
 
 			case IMUI_FPS: {
 				DrawFPS(cursor_position.x, cursor_position.y);
+				update_by = (dir == IMDIR_VERTICAL) ? 15 : 50;
 			} break;
 
 			case IMUI_REGION: {
 				UICommandContext tmp_context = { .head = command, .tail = context.tail };
-				imui_render_region(tmp_context);
+				UICommand* next = imui_render_region_internal(tmp_context);
 
 				update_by = (dir == IMDIR_VERTICAL) ? command->command_data.region.bounding_rect.height : command->command_data.region.bounding_rect.width;
+				command = next;
 			} break;
 
 			case IMUI_END_REGION: {
-				return;
+				return command;
 			} break;
 		}
 
@@ -242,8 +246,15 @@ void imui_render_region(UICommandContext context) {
 
 		command = command->next_command;
 	}
+	return NULL;
 }
 
-void imui_context_render(UICommandContext context) {
-	
+void fn imui_context_render(UICommandContext context) {
+	if (context.head == NULL) { return; }
+
+	if (context.head->type != IMUI_REGION) {
+		return;
+	}
+
+	imui_render_region_internal(context);
 }

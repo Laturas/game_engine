@@ -33,7 +33,7 @@
 	void CameraMoveForward(Camera *camera, float distance, bool moveInWorldPlane);
 #endif
 
-void update_editor_camera(Camera *camera) {
+void fn update_editor_camera(Camera *camera) {
 	Vector2 mousePositionDelta = GetMouseDelta();
 
 	int mode = CAMERA_FREE;
@@ -104,7 +104,7 @@ void update_editor_camera(Camera *camera) {
 	}
 }
 
-Transform default_transform() {
+Transform fn default_transform() {
 	return (Transform) {
 		.rotation = QuaternionIdentity(),
 		.scale = (Vector3) {1.0f, 1.0f, 1.0f},
@@ -112,13 +112,45 @@ Transform default_transform() {
 	};
 }
 
-void draw_model(ModelID model_id, const Model* model_prefabs, Transform model_transform) {
+void fn draw_model(ModelID model_id, const Model* model_prefabs, Transform model_transform) {
 	if (model_id == MODEL_NONE) { return; }
 
 	DrawModelEx(model_prefabs[model_id], model_transform.translation, VECTOR3_UP, 0.0f, model_transform.scale, WHITE);
 }
 
-void editor_loop(
+void fn editor_draw_ui() {
+	Arena ui_arena = {0};
+	UICommandContext context = {0};
+	UIRegionParameters params = {
+		.background_color = SKYBLUE,
+		.background_fade = 0.5f,
+		.border_color = RAYWHITE,
+		.border_fade = 0.9f,
+		.horizontal_spacing = 15,
+		.vertical_spacing = 15,
+	};
+
+	Rectangle screen_rect = { .height = GetScreenHeight(), .width = GetScreenWidth(), .x = 0.0f, .y = 0.0f };
+	
+	imui_region_begin(&ui_arena, &context, screen_rect, IMDIR_VERTICAL, (UIRegionParameters){.vertical_spacing = 15.0f, .horizontal_spacing = 15.0f});
+
+		imui_draw_fps(&ui_arena, &context);
+
+		Rectangle panel_rect = { .height = 320.0f, .width = 320.0f, .x = 15.0f, .y = 45.0f };
+
+		imui_region_begin(&ui_arena, &context, panel_rect, IMDIR_VERTICAL, params);
+			imui_draw_text(&ui_arena, &context, (String) {"Hello", sizeof("Hello")}, RAYWHITE, 1.0f, 16.0f);
+
+			imui_draw_text(&ui_arena, &context, (String) {"Meow :3", sizeof("Meow :3")}, RAYWHITE, 1.0f, 16.0f);
+		imui_region_end(&ui_arena, &context);
+
+	imui_region_end(&ui_arena, &context);
+
+	imui_context_render(context);
+	arena_free(&ui_arena);
+}
+
+void fn editor_loop(
 	Camera*               main_camera,
 	StaticObjectArray     static_objects,
 	const Model*          model_prefabs,
@@ -176,29 +208,8 @@ void editor_loop(
 			draw_editor_ui();
 		#endif
 
-		Arena ui_arena = {0};
-		UICommandContext context = {0};
-		UIRegionParameters params = {
-			.background_color = SKYBLUE,
-			.background_fade = 0.5f,
-			.border_color = RAYWHITE,
-			.border_fade = 0.9f,
-			.horizontal_spacing = 15,
-			.vertical_spacing = 15,
-		};
+		editor_draw_ui();
 
-		Rectangle screen_rect = { .height = GetScreenHeight(), .width = GetScreenWidth(), .x = 0.0f, .y = 0.0f };
-		
-		imui_region_begin(&ui_arena, &context, screen_rect, IMDIR_VERTICAL, (UIRegionParameters){0});
-
-			imui_draw_fps(&ui_arena, &context);
-			imui_draw_text(&ui_arena, &context, (String) {"Hello", sizeof("Hello")}, RAYWHITE, 1.0f, 12.0f);
-
-		imui_region_end(&ui_arena, &context);
-
-		imui_render_region(context);
-
-		arena_free(&ui_arena);
 	EndDrawing();
 }
 
@@ -286,7 +297,7 @@ enum game_loop {
 
 enum game_loop loop_mode;
 
-void initialize_model(Model* model_prefab, ModelID model_to_load) {
+void fn initialize_model(Model* model_prefab, ModelID model_to_load) {
 	switch (model_to_load) {
 		case MODEL_NONE: {
 			*model_prefab = (Model) {0};
@@ -307,7 +318,7 @@ void initialize_model(Model* model_prefab, ModelID model_to_load) {
 	}
 }
 
-void initialize_models(Model* model_prefabs, int model_count) {
+void fn initialize_models(Model* model_prefabs, int model_count) {
 	for (int i = 0; i < model_count; i++) {
 		initialize_model(&(model_prefabs[i]), (ModelID)i);
 	}
@@ -316,7 +327,7 @@ void initialize_models(Model* model_prefabs, int model_count) {
 /**
 * Static objects will be initialized on scene load. This is a temporary function for test purposes.
 */
-StaticObjectArray test_initialize_static_objects(Arena* static_object_data) {
+StaticObjectArray fn test_initialize_static_objects(Arena* static_object_data) {
 	int object_count = 3;
 	StaticObject* object_array = arena_alloc(static_object_data, sizeof(*object_array) * object_count);
 
@@ -350,7 +361,7 @@ StaticObjectArray test_initialize_static_objects(Arena* static_object_data) {
 	};
 }
 
-int afterhours_main(int argc, char* argv[]) {
+int fn afterhours_main(int argc, char* argv[]) {
 	const int screenWidth = 1600;
 	const int screenHeight = 900;
 

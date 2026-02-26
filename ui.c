@@ -9,12 +9,12 @@ typedef enum UiElementMouseState {
 	UIMS_DOWN,
 } UiElementMouseState;
 
-bool is_mouse_hovered(Rectangle button_rect) {
+bool fn is_mouse_hovered(Rectangle button_rect) {
 	Vector2 mouse_position = GetMousePosition();
 	return CheckCollisionPointRec(mouse_position, button_rect);
 }
 
-UiElementMouseState ui_element_mouse_state(Rectangle element_rect) {
+UiElementMouseState fn ui_element_mouse_state(Rectangle element_rect) {
 	Vector2 mouse_position = GetMousePosition();
 	if (CheckCollisionPointRec(mouse_position, element_rect)) {
 		if (IsMouseButtonPressed(0)) {
@@ -29,7 +29,7 @@ UiElementMouseState ui_element_mouse_state(Rectangle element_rect) {
 	}
 }
 
-void draw_editor_object_list(i32 x_pos, i32 y_pos) {
+void fn draw_editor_object_list(i32 x_pos, i32 y_pos) {
 	char* objects[3] = {"Box", "Not box", "Sphere"};
 
 	i32 obj_count = (sizeof(objects) / sizeof(*objects));
@@ -95,7 +95,7 @@ void draw_editor_object_list(i32 x_pos, i32 y_pos) {
 	}
 }
 
-void draw_editor_ui() {
+void fn draw_editor_ui() {
 	Arena ui_draw_call_arena = {0};
 
 	i32 fps_y_pos = 15 + 15;
