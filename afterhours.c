@@ -178,8 +178,8 @@ void fn editor_loop(
 				SpacialHash spacial_hash = optional_render_spacial_hash;
 
 				for (int z = 0; z < spacial_hash.z_axis_cell_count; z++) {
-					for (int x = 0; x < spacial_hash.z_axis_cell_count; x++) {
-						if (spacial_hash.cells[(spacial_hash.z_axis_cell_count * z) + x].list != NULL) {
+					for (int x = 0; x < spacial_hash.x_axis_cell_count; x++) {
+						if (spacial_hash.cells[(spacial_hash.x_axis_cell_count * z) + x].list != NULL) {
 							Vector3 position = {
 								.x = x * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.x,
 								.y = 0,
