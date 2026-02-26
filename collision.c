@@ -176,7 +176,7 @@ SpacialHash collision_spacial_hash_create(Arena* collider_data_arena, TriangleCo
 	BoundingBox world_bound = collision_get_world_bounding_box(static_colliders);
 	SpacialHash spacial_hash = (SpacialHash) {
 		.cell_width = DEFAULT_CELL_WIDTH,
-		.world_bounding_box = collision_get_world_bounding_box(static_colliders),
+		.world_bounding_box = world_bound,
 		.cells = NULL,
 		.x_axis_cell_count = ((world_bound.max.x - world_bound.min.x) / DEFAULT_CELL_WIDTH) + 1,
 		.z_axis_cell_count = ((world_bound.max.z - world_bound.min.z) / DEFAULT_CELL_WIDTH) + 1
