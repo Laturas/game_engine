@@ -356,6 +356,20 @@ String string_concatenate(Arena* string_arena, String str_1, String str_2) {
 	#error "File separator not defined for this platform"
 #endif
 
+String string_copy(Arena* string_arena, String copy_from) {
+	char* str = arena_alloc(string_arena, copy_from.length + 1);
+
+	for (int i = 0; i < copy_from.length; i++) {
+		str[i] = copy_from.str[i];
+	}
+	str[copy_from.length] = '\0';
+
+	return (String) {
+		.length = copy_from.length,
+		.str = str
+	};
+}
+
 /**
  * Concatenates two file strings in a safe, cross-platform manner.
  * Ensures that they're null terminated.
@@ -395,6 +409,91 @@ String string_concatenate_files(Arena* string_arena, String str_1, String str_2)
 		.length = combined_len + extra_concat,
 		.str = buffer
 	};
+}
+
+typedef struct StringArray {
+	String* strings;
+	int len;
+} StringArray;
+
+StringArray platform_dependent_get_all_files_in_directory(Arena* strings_arena, String directory);
+
+#ifdef linux
+#include <dirent.h> 
+#include <sys/stat.h>
+
+bool is_regular_file_internal(struct dirent* file) {
+	if (file->d_type == DT_REG) {
+		return true;
+	}
+	else if (file->d_type == DT_UNKNOWN) {
+		struct stat st;
+		if (stat(file->d_name, &st) == 0) {
+			if (S_ISREG(st.st_mode)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+StringArray platform_dependent_get_all_files_in_directory(Arena* strings_arena, String directory) {
+	StringArray array = { .strings = NULL, .len = 0 };
+
+	/* We can't assume that the string is null terminated. It could be a string slice. */
+	int prev = arena_save(strings_arena);
+		char* directory_name = arena_alloc(strings_arena, directory.length + 1);
+
+		for (int i = 0; i < directory.length; i++) {
+			directory_name[i] = directory.str[i];
+		}
+		directory_name[directory.length] = '\0';
+
+		DIR* directory_stream = opendir(directory_name);
+		DIR* directory_stream_2 = opendir(directory_name);
+	arena_restore(strings_arena, prev);
+
+	if (directory_stream != NULL && directory_stream_2 != NULL) {
+		/* There might be a better way but I wanted to do it all in one allocation so I just loop over it twice. */
+		int count = 0;
+		for (struct dirent* file = readdir(directory_stream); file != NULL; file = readdir(directory_stream)) {
+			if (is_regular_file_internal(file)) {
+				String str = string_null_to_length_terminated(file->d_name);
+	
+				if (!string_eq(str, (String) {.length = 1, .str = "."}) &&
+					!string_eq(str, (String) {.length = 2, .str = ".."})
+				) {
+					count++;
+				}
+			}
+		}
+		closedir(directory_stream);
+
+		array.strings = arena_alloc(strings_arena, sizeof(*array.strings) * count);
+		array.len = count;
+
+		int i = 0;
+
+		for (struct dirent* file = readdir(directory_stream_2); file != NULL; file = readdir(directory_stream_2)) {
+			if (is_regular_file_internal(file)) {
+				String str = string_null_to_length_terminated(file->d_name);
+	
+				if (!string_eq(str, (String) {.length = 1, .str = "."}) &&
+					!string_eq(str, (String) {.length = 2, .str = ".."})
+				) {
+					array.strings[i] = str;
+					i++;
+				}
+			}
+		}		
+	}
+
+	return array;
+}
+#endif
+
+StringArray fs_get_files_in_dir(Arena* strings_arena, String directory) {
+	return platform_dependent_get_all_files_in_directory(strings_arena, directory);
 }
 
 /**

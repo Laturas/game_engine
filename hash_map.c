@@ -6,8 +6,8 @@ typedef struct HashEntry {
 	const void* key;
 	const void* value;
 	u64 key_len;
-	HashEntry* next;
-	HashEntry* prev;
+	struct HashEntry* next;
+	struct HashEntry* prev;
 } HashEntry;
 
 typedef struct HashMap {
@@ -51,10 +51,10 @@ u64 hash_push(
 	if (map->table == NULL) {
 		u64 table_size = (map->table_size == 0) ? DEFAULT_HASHMAP_SIZE : map->table_size;
 
-		HashEntry** entries = arena_alloc(&hash_arena, sizeof(*map->table) * table_size);
+		HashEntry** entries = arena_alloc(hash_arena, sizeof(*map->table) * table_size);
 		if (NEVER(entries == NULL)) { return HASH_PUSH_FAIL; }
 
-		for (int i = 0; i < table_size; i++) { entries[i] == NULL; }
+		for (int i = 0; i < table_size; i++) { entries[i] = NULL; }
 
 		*map = (HashMap) {
 			.head = NULL,
@@ -73,7 +73,7 @@ u64 hash_push(
 		u64 query = (search_start + (quad_probe * quad_probe)) % map->table_size;
 
 		if (map->table[query] == NULL) {
-			HashEntry* new_entry = arena_alloc(&hash_arena, sizeof(*new_entry));
+			HashEntry* new_entry = arena_alloc(hash_arena, sizeof(*new_entry));
 
 			*new_entry = (HashEntry) {
 				.key = key,
@@ -110,7 +110,7 @@ bool bytes_eq_internal(const u8* bytes_1, u64 bytes_1_len, const u8* bytes_2, u6
 	return true;
 }
 
-void* hash_get(const HashMap* map, const void* key, u64 key_length_bytes) {
+const void* hash_get(const HashMap* map, const void* key, u64 key_length_bytes) {
 	if (NEVER(map == NULL || key == NULL)) { return NULL; }
 
 	u64 hash = hash_value(key, key_length_bytes);
