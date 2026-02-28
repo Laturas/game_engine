@@ -491,6 +491,108 @@ StringArray platform_dependent_get_all_files_in_directory(Arena* strings_arena, 
 	return array;
 }
 #endif
+#ifdef WIN32
+
+HANDLE FindFirstFileExA(
+  LPCSTR             lpFileName,
+  FINDEX_INFO_LEVELS fInfoLevelId,
+  LPVOID             lpFindFileData, /* out */
+  FINDEX_SEARCH_OPS  fSearchOp,
+  LPVOID             lpSearchFilter,
+  DWORD              dwAdditionalFlags
+);
+BOOL FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData);
+BOOL FindClose(HANDLE hFindFile);
+
+#ifndef INVALID_HANDLE_VALUE
+	#define INVALID_HANDLE_VALUE ((HANDLE)(LONG_PTR)-1)
+#endif
+
+LPCSTR platform_dependent_generate_valid_relative_directory(Arena* strings_arena, String directory) {
+	if (directory.length > 0 && directory.str[directory.length - 1] == '\0') {
+		directory.length--; /* Ignore the null */
+	}
+
+	if (directory.length <= 1) {
+		return ".\\*";
+	}
+
+	int size = directory.length + 5; /* +5 is worst case */
+	
+	char* out = arena_alloc(strings_arena, size);
+	int i = 0;
+	
+	int needs_prefix = !(directory.length >= 2 &&
+						directory.str[0] == '.' &&
+						directory.str[1] == '\\');
+
+	if (needs_prefix) {
+		out[i++] = '.';
+		out[i++] = '\\';
+	}
+
+	for (int j = 0; j < directory.length; j++) {
+		out[i++] = (directory.str[j] == '/') ? '\\' : directory.str[j];
+	}
+
+	if (i > 0 && out[i - 1] == '\\') {
+		out[i++] = '*';
+	} else {
+		out[i++] = '\\';
+		out[i++] = '*';
+	}
+	
+	out[i] = '\0';
+
+	return out;
+}
+
+StringArray platform_dependent_get_all_files_in_directory(Arena* strings_arena, String directory) {
+	StringArray array = { .strings = NULL, .len = 0 };
+
+	int count = 0;
+
+	/* We can't assume that the string is null terminated. It could be a string slice. */
+	int prev = arena_save(strings_arena);
+		LPCSTR name = platform_dependent_generate_valid_relative_directory(strings_arena, directory);
+
+		WIN32_FIND_DATAA find_data = {0};
+		HANDLE handle = FindFirstFileExA(name, FindExInfoBasic, &find_data, FindExSearchNameMatch, NULL, 0);
+
+		if (handle != INVALID_HANDLE_VALUE) {
+			do {
+				if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+					count++;
+				}
+			} while (FindNextFileA(handle, &find_data));
+
+			FindClose(handle);
+		}
+
+		handle = FindFirstFileExA(name, FindExInfoBasic, &find_data, FindExSearchNameMatch, NULL, 0);
+	arena_restore(strings_arena, prev);
+
+	array.strings = arena_alloc(strings_arena, sizeof(*array.strings) * count);
+	array.len = count;
+
+	if (handle != INVALID_HANDLE_VALUE) {
+		int i = 0;
+		do {
+			if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+				array.strings[i] = string_copy(strings_arena, string_null_to_length_terminated(find_data.cFileName));
+				i++;
+			}
+		} while (FindNextFileA(handle, &find_data));
+
+		FindClose(handle);
+	} else {
+		arena_restore(strings_arena, prev);
+		array = (StringArray) { .strings = NULL, .len = 0 };
+	}
+	
+	return array;
+}
+#endif
 
 StringArray fs_get_files_in_dir(Arena* strings_arena, String directory) {
 	return platform_dependent_get_all_files_in_directory(strings_arena, directory);
