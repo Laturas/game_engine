@@ -3,8 +3,8 @@
 #endif
 
 typedef struct HashEntry {
-	const void* key;
-	const void* value;
+	void* key;
+	void* value;
 	u64 key_len;
 	struct HashEntry* next;
 	struct HashEntry* prev;
@@ -23,7 +23,7 @@ u64 hash_value(const u8* byte_array, u64 byte_array_length) {
 	for (u64 i = 0; i < byte_array_length; i++) {
 		hash_value = hash_value * 5 + 0xE6546B64;
         hash_value <<= 8;
-        hash_value |= byte_array[i - 1];
+        hash_value |= byte_array[i];
 
 		hash_value *= 0xCC9E2D51;
 		hash_value = (hash_value << 15) | (hash_value >> 17);
@@ -36,12 +36,16 @@ u64 hash_value(const u8* byte_array, u64 byte_array_length) {
 #define DEFAULT_HASHMAP_SIZE (1024 * 256)
 #define HASH_PUSH_FAIL ((~(0ULL)))
 
+#ifdef DEBUG
+int collisions = 0;
+#endif
+
 u64 hash_push(
 	HashMap* map,
 	Arena* hash_arena,
-	const void* key,
+	void* key,
 	u64 key_length_bytes,
-	const void* value
+	void* value
 ) {
 	if (NEVER(
 		map == NULL || hash_arena == NULL ||
@@ -54,7 +58,7 @@ u64 hash_push(
 		HashEntry** entries = arena_alloc(hash_arena, sizeof(*map->table) * table_size);
 		if (NEVER(entries == NULL)) { return HASH_PUSH_FAIL; }
 
-		for (int i = 0; i < table_size; i++) { entries[i] = NULL; }
+		for (u64 i = 0; i < table_size; i++) { entries[i] = NULL; }
 
 		*map = (HashMap) {
 			.head = NULL,
@@ -96,6 +100,10 @@ u64 hash_push(
 			map->pushed_entries++;
 			return query;
 		}
+		#ifdef DEBUG
+		collisions++;
+		#endif
+
 		quad_probe++;
 	}
 }
@@ -110,17 +118,18 @@ bool bytes_eq_internal(const u8* bytes_1, u64 bytes_1_len, const u8* bytes_2, u6
 	return true;
 }
 
-const void* hash_get(const HashMap* map, const void* key, u64 key_length_bytes) {
-	if (NEVER(map == NULL || key == NULL)) { return NULL; }
+void* hash_get(HashMap map, const void* key, u64 key_length_bytes) {
+	if (NEVER(key == NULL)) { return NULL; }
+	if (NEVER(map.table == NULL)) { return NULL; }
 
 	u64 hash = hash_value(key, key_length_bytes);
-	u64 search_start = hash % map->table_size;
+	u64 search_start = hash % map.table_size;
 
 	u64 quad_probe = 0;
 
 	while (true) {
-		u64 query = (search_start + (quad_probe * quad_probe)) % map->table_size;
-		HashEntry* query_entry = map->table[query];
+		u64 query = (search_start + (quad_probe * quad_probe)) % map.table_size;
+		HashEntry* query_entry = map.table[query];
 
 		if (query_entry == NULL) {
 			return NULL;
@@ -129,6 +138,9 @@ const void* hash_get(const HashMap* map, const void* key, u64 key_length_bytes) 
 		if (bytes_eq_internal(key, key_length_bytes, query_entry->key, query_entry->key_len)) {
 			return query_entry->value;
 		}
+		#ifdef DEBUG
+		collisions++;
+		#endif
 		quad_probe++;
 	}
 }

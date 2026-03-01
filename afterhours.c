@@ -3,6 +3,8 @@
 #include "afterhours.h"
 
 #include "math.c"
+#include "hash_map.c"
+
 #include "collision.c"
 #include "entities.c"
 #include "ui.c"
