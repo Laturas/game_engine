@@ -34,6 +34,7 @@ typedef enum UICommandType {
 	IMUI_CHECKBOX,
 	IMUI_REGION,
 	IMUI_END_REGION,
+	IMUI_PADDING,
 
 	IMUI_COUNT
 } UICommandType;
@@ -51,12 +52,27 @@ typedef struct UICommandFPS {
 	int none;
 } UICommandFPS;
 
+typedef struct UICommandPadding {
+	int padding_amount;
+} UICommandPadding;
+
 typedef struct UICommandText {
 	String text;
 	Color color;
 	float text_fade;
 	float font_size;
 } UICommandText;
+
+typedef struct UICommandButton {
+	String text;
+	float internal_padding;
+	float font_size;
+	Color background_color;
+	Color background_hover_color;
+	Color background_click_color;
+
+	void* click_callback;
+} UICommandButton;
 
 typedef struct UICommandPageList {
 	int current_page;
@@ -91,6 +107,8 @@ typedef union UIUnion {
 	UICommandEndRegion end_region;
 	UICommandFPS fps;
 	UICommandText text;
+	UICommandButton button;
+	UICommandPadding padding;
 } UIUnion;
 
 typedef struct UICommand {
@@ -104,6 +122,32 @@ typedef struct UICommandContext {
 	UICommand* head;
 	UICommand* tail;
 } UICommandContext;
+
+#ifndef REGION_EXTRA
+
+typedef enum UIMouseState {
+	UIMS_NONE,
+	UIMS_HOVERED,
+	UIMS_CLICKED,
+	UIMS_DOWN
+} UIMouseState;
+
+UIMouseState imui_element_mouse_state(Rectangle element_rect) {
+	Vector2 mouse_position = GetMousePosition();
+	if (CheckCollisionPointRec(mouse_position, element_rect)) {
+		if (IsMouseButtonPressed(0)) {
+			return UIMS_CLICKED;
+		}
+		if (IsMouseButtonDown(0)) {
+			return UIMS_DOWN;
+		}
+		return UIMS_HOVERED;
+	} else {
+		return UIMS_NONE;
+	}
+}
+
+#endif
 
 void imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
 	UICommand* command = arena_alloc(ui_arena, sizeof(*command));
@@ -123,7 +167,30 @@ void imui_draw_fps(Arena* ui_arena, UICommandContext* ui_context) {
 	}
 }
 
-void imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Color color, float text_fade, float font_size) {
+void imui_draw_padding(Arena* ui_arena, UICommandContext* ui_context, int padding_amount) {
+	UICommand* command = arena_alloc(ui_arena, sizeof(*command));
+
+	command->command_data.padding = (UICommandPadding) {
+		.padding_amount = padding_amount
+	};
+	command->type = IMUI_PADDING;
+	command->callback_fptr = NULL;
+
+	if (ui_context->head == NULL) {
+		ui_context->head = command;
+		ui_context->tail = command;
+	} else {
+		ui_context->tail->next_command = command;
+		ui_context->tail = command;
+	}
+}
+
+void imui_draw_text(Arena* ui_arena, UICommandContext* context,
+	String text,
+	Color color,
+	float text_fade,
+	float font_size
+) {
 	UICommand* text_command = arena_alloc(ui_arena, sizeof(*text_command));
 
 	text_command->next_command = NULL;
@@ -134,6 +201,38 @@ void imui_draw_text(Arena* ui_arena, UICommandContext* context, String text, Col
 		.font_size = font_size,
 		.text = text,
 		.text_fade = text_fade
+	};
+
+	if (context->head == NULL) {
+		context->head = text_command;
+		context->tail = text_command;
+	} else {
+		context->tail->next_command = text_command;
+		context->tail = text_command;
+	}
+}
+
+void imui_draw_button(Arena* ui_arena, UICommandContext* context,
+	String text,
+	Color background_color,
+	Color background_hover_color,
+	Color background_click_color,
+	float font_size,
+	float internal_padding
+) {
+	UICommand* text_command = arena_alloc(ui_arena, sizeof(*text_command));
+
+	text_command->next_command = NULL;
+	text_command->callback_fptr = NULL;
+	text_command->type = IMUI_BUTTON;
+	text_command->command_data.button = (UICommandButton) {
+		.background_color = background_color,
+		.background_click_color = background_click_color,
+		.background_hover_color = background_hover_color,
+		.click_callback = NULL,
+		.font_size = font_size,
+		.internal_padding = internal_padding,
+		.text = text
 	};
 
 	if (context->head == NULL) {
@@ -233,12 +332,58 @@ UICommand* imui_render_region_internal(UICommandContext context) {
 				command = next;
 			} break;
 
+			case IMUI_BUTTON: {
+				UICommandButton text_data = command->command_data.button;
+				
+				Vector2 text_size = MeasureTextEx(GetFontDefault(), text_data.text.str, text_data.font_size, 1.0f);
+				
+				Rectangle button_region;
+				button_region.width = text_size.x + (2 * text_data.internal_padding);
+				button_region.height = text_size.y + (2 * text_data.internal_padding);
+				button_region.x = cursor_position.x;
+				button_region.y = cursor_position.y;
+
+				Color fill_color;
+				Color border_color;
+
+				switch (imui_element_mouse_state(button_region)) {
+					case UIMS_NONE: {
+						fill_color = text_data.background_color;
+						border_color = Fade(WHITE, 0.0f);
+					} break;
+
+					case UIMS_HOVERED: {
+						fill_color = text_data.background_hover_color;
+						border_color = Fade(WHITE, 1.0f);
+					} break;
+
+					case UIMS_CLICKED:
+						fprintf(stderr, "Rect clicked!\n");
+					/* fallthrough */
+					case UIMS_DOWN: {
+						fill_color = text_data.background_click_color;
+						border_color = Fade(WHITE, 1.0f);
+					} break;
+				}
+
+				DrawRectangle(	   button_region.x, button_region.y, button_region.width, button_region.height, fill_color);
+				DrawRectangleLines(button_region.x, button_region.y, button_region.width, button_region.height, border_color);
+				DrawText(text_data.text.str, button_region.x + text_data.internal_padding, button_region.y + text_data.internal_padding, (int)text_data.font_size, RAYWHITE);
+
+				update_by = (dir == IMDIR_VERTICAL) ? button_region.height : button_region.width;
+			} break;
+
+			case IMUI_PADDING: {
+				UICommandPadding padding_data = command->command_data.padding;
+				update_by = padding_data.padding_amount;
+			} break;
+
 			case IMUI_END_REGION: {
 				return command;
 			} break;
 
-			default: {
-				ASSERT(!"Render command type not handled");
+			case IMUI_COUNT: {
+				ASSERT("Illegal enumeration value");
 			} break;
 		}
 

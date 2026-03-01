@@ -121,6 +121,7 @@ void draw_model(ModelID model_id, const Model* model_prefabs, Transform model_tr
 }
 
 void editor_draw_ui() {
+	Arena strings_arena = {0};
 	Arena ui_arena = {0};
 	UICommandContext context = {0};
 	UIRegionParameters params = {
@@ -141,15 +142,35 @@ void editor_draw_ui() {
 		Rectangle panel_rect = { .height = 320.0f, .width = 320.0f, .x = 15.0f, .y = 45.0f };
 
 		imui_region_begin(&ui_arena, &context, panel_rect, IMDIR_VERTICAL, params);
-			imui_draw_text(&ui_arena, &context, (String) {"Hello", sizeof("Hello")}, RAYWHITE, 1.0f, 16.0f);
+			imui_draw_text(&ui_arena, &context, (String) {"Objects", sizeof("Objects")}, RAYWHITE, 1.0f, 16.0f);
 
-			imui_draw_text(&ui_arena, &context, (String) {"Meow :3", sizeof("Meow :3")}, RAYWHITE, 1.0f, 16.0f);
+			imui_draw_padding(&ui_arena, &context, 5);
+
+			StringArray models = fs_get_files_in_dir(&strings_arena, (String) {"assets/models", sizeof("assets/models") - 1});
+			String model_postfix = {.str = ".obj", .length = sizeof(".obj") - 1};
+
+			for (int i = 0; i < models.len; i++) {
+				String current = models.strings[i];
+
+				if (string_ends_with(current, model_postfix)) {
+					imui_draw_button(&ui_arena, &context,
+						current,
+						Fade(SKYBLUE, 0.5f),  /* Default color */
+						Fade(BLUE, 0.5f),     /* Hover color */
+						Fade(DARKBLUE, 0.5f), /* Click color */
+						16.0f,                /* Font size */
+						5.0f                  /* Internal padding */
+					);
+					imui_draw_padding(&ui_arena, &context, 5);
+				}
+			}
 		imui_region_end(&ui_arena, &context);
 
 	imui_region_end(&ui_arena, &context);
 
 	imui_context_render(context);
 	arena_free(&ui_arena);
+	arena_free(&strings_arena);
 }
 
 void editor_loop(

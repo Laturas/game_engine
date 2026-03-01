@@ -73,6 +73,15 @@ void test_hashmap() {
 	arena_free(&hash_arena);
 }
 
+void test_ends_with() {
+	String str_1 = {.str = "Hello.mp3", .length = sizeof("Hello.mp3") - 1};
+	String str_2 = {.str = ".mp3", .length = sizeof(".mp3") - 1};
+
+	ASSERT(string_ends_with(str_1, str_2));
+	ASSERT(!string_ends_with(str_2, str_1));
+	ASSERT(string_ends_with(str_2, str_2));
+}
+
 int main() {
 	#ifdef TESTCASE_STRINGS
 		printf("Testing strings\n");
@@ -80,7 +89,13 @@ int main() {
 		printf("\nString test done\n");
 	#endif
 
-	printf("Testing hash maps\n");
-	test_hashmap();
-	printf("Hash map test passed\n");
+	#ifdef TESTCASE_HASHMAP
+		printf("Testing hash maps\n");
+		test_hashmap();
+		printf("Hash map test passed\n");
+	#endif
+
+	printf("Testing string ends with\n");
+	test_ends_with();
+	printf("string ends with test passed\n");
 }

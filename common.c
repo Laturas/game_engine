@@ -411,6 +411,18 @@ String string_concatenate_files(Arena* string_arena, String str_1, String str_2)
 	};
 }
 
+bool string_ends_with(String string, String ends_with) {
+	if (ends_with.length > string.length) { return false; }
+
+	for (int i = ends_with.length - 1; i >= 0; i--) {
+		int str_index = string.length - ends_with.length + i;
+		if (string.str[str_index] != ends_with.str[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
 typedef struct StringArray {
 	String* strings;
 	int len;
