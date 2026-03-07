@@ -159,7 +159,8 @@ void editor_draw_ui() {
 						Fade(BLUE, 0.5f),     /* Hover color */
 						Fade(DARKBLUE, 0.5f), /* Click color */
 						16.0f,                /* Font size */
-						5.0f                  /* Internal padding */
+						5.0f,                  /* Internal padding */
+						(Vector2) { panel_rect.width - ((float)params.horizontal_spacing * 2), 0.0f}
 					);
 					imui_draw_padding(&ui_arena, &context, 5);
 				}

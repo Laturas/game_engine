@@ -479,13 +479,13 @@ StringArray platform_dependent_get_all_files_in_directory(Arena* strings_arena, 
 				}
 			}
 		}
-		closedir(directory_stream);
-
+		if (directory_stream != NULL) closedir(directory_stream);
+		
 		array.strings = arena_alloc(strings_arena, sizeof(*array.strings) * count);
 		array.len = count;
 
 		int i = 0;
-
+		
 		for (struct dirent* file = readdir(directory_stream_2); file != NULL; file = readdir(directory_stream_2)) {
 			if (is_regular_file_internal(file)) {
 				String str = string_null_to_length_terminated(file->d_name);
@@ -499,6 +499,8 @@ StringArray platform_dependent_get_all_files_in_directory(Arena* strings_arena, 
 			}
 		}		
 	}
+
+	closedir(directory_stream_2);
 
 	return array;
 }

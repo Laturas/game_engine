@@ -70,6 +70,7 @@ typedef struct UICommandButton {
 	Color background_color;
 	Color background_hover_color;
 	Color background_click_color;
+	Vector2 override_size;
 
 	void* click_callback;
 } UICommandButton;
@@ -218,29 +219,31 @@ void imui_draw_button(Arena* ui_arena, UICommandContext* context,
 	Color background_hover_color,
 	Color background_click_color,
 	float font_size,
-	float internal_padding
+	float internal_padding,
+	Vector2 optional_override_size
 ) {
-	UICommand* text_command = arena_alloc(ui_arena, sizeof(*text_command));
+	UICommand* button_command = arena_alloc(ui_arena, sizeof(*button_command));
 
-	text_command->next_command = NULL;
-	text_command->callback_fptr = NULL;
-	text_command->type = IMUI_BUTTON;
-	text_command->command_data.button = (UICommandButton) {
+	button_command->next_command = NULL;
+	button_command->callback_fptr = NULL;
+	button_command->type = IMUI_BUTTON;
+	button_command->command_data.button = (UICommandButton) {
 		.background_color = background_color,
 		.background_click_color = background_click_color,
 		.background_hover_color = background_hover_color,
 		.click_callback = NULL,
 		.font_size = font_size,
 		.internal_padding = internal_padding,
-		.text = text
+		.text = text,
+		.override_size = optional_override_size
 	};
 
 	if (context->head == NULL) {
-		context->head = text_command;
-		context->tail = text_command;
+		context->head = button_command;
+		context->tail = button_command;
 	} else {
-		context->tail->next_command = text_command;
-		context->tail = text_command;
+		context->tail->next_command = button_command;
+		context->tail = button_command;
 	}
 }
 
@@ -342,6 +345,9 @@ UICommand* imui_render_region_internal(UICommandContext context) {
 				button_region.height = text_size.y + (2 * text_data.internal_padding);
 				button_region.x = cursor_position.x;
 				button_region.y = cursor_position.y;
+
+				if (text_data.override_size.x > 0.0f) { button_region.width = text_data.override_size.x; }
+				if (text_data.override_size.y > 0.0f) { button_region.height = text_data.override_size.y; }
 
 				Color fill_color;
 				Color border_color;
