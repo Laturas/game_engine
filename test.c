@@ -82,6 +82,37 @@ void test_ends_with() {
 	ASSERT(string_ends_with(str_2, str_2));
 }
 
+void test_raycasting() {
+	Arena collision_arena = {0};
+
+	TriangleCollider tri = {
+		.entity_id = 0,
+		.mask = MASK_ALL,
+		.vert_1 = (Vector3) {.x = -50, .y = 0, .z = -50},
+		.vert_2 = (Vector3) {.x = 50, .y = 0, .z = -50},
+		.vert_3 = (Vector3) {.x = 50, .y = 0, .z = 50},
+	};
+
+	TriangleColliderArray arr = {
+		.colliders = &tri,
+		.length = 1
+	};
+
+	#ifdef DEFAULT_CELL_WIDTH
+		#undef DEFAULT_CELL_WIDTH
+	#endif
+
+	SpacialHash hash = collision_spacial_hash_create(&collision_arena, arr);
+
+	Vector3 hit = collision_ray_intersection_with_aabb(&hash, VECTOR3_ZERO, (Vector3) {1.0f, 1.0f, 1.0f}, 20.0f);
+
+	ASSERT(Vector3Equals(hit, VECTOR3_ZERO)); /* This should return the zero vector, because the starting point (origin) is inside the hash */
+
+	hit = collision_ray_intersection_with_aabb(&hash, (Vector3) {-100.0f, -100.0f, -100.0f}, (Vector3) {1.0f, 1.0f, 1.0f}, INFINITY);
+
+	printf("hitpt 2 = (%f, %f, %f)\n", hit.x, hit.y, hit.z);
+}
+
 int main() {
 	#ifdef TESTCASE_STRINGS
 		printf("Testing strings\n");
@@ -98,4 +129,9 @@ int main() {
 	printf("Testing string ends with\n");
 	test_ends_with();
 	printf("string ends with test passed\n");
+
+
+	printf("Testing raycasting\n");
+	test_raycasting();
+	printf("Raycasting test passed\n");
 }

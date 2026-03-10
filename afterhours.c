@@ -10,6 +10,8 @@
 #include "ui.c"
 #include "immediate_ui.c"
 
+#include "ui_experiment.c"
+
 
 /* Leave this undefined. This is a region. */
 #ifndef REGION_RAYLIB_CAMERA_FUNCTIONALITY
@@ -205,9 +207,9 @@ void editor_loop(
 					for (int x = 0; x < spacial_hash.x_axis_cell_count; x++) {
 						if (spacial_hash.cells[(spacial_hash.x_axis_cell_count * z) + x].list != NULL) {
 							Vector3 position = {
-								.x = x * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.x,
+								.x = x * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.x + (spacial_hash.cell_width / 2.0f),
 								.y = 0,
-								.z = z * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.z
+								.z = z * spacial_hash.cell_width + spacial_hash.world_bounding_box.min.z + (spacial_hash.cell_width / 2.0f)
 							};
 		
 							DrawCubeWires(position, spacial_hash.cell_width, 100.0f, spacial_hash.cell_width, LIGHTGRAY);
@@ -232,8 +234,11 @@ void editor_loop(
 			draw_editor_ui();
 		#endif
 
-		editor_draw_ui();
+		#ifdef UNUSED
+			editor_draw_ui();
+		#endif
 
+		test_example();
 	EndDrawing();
 }
 
